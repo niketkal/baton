@@ -19,6 +19,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*"
+    "@baton/schema": "workspace:*",
+    "better-sqlite3": "12.9.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.12"
   }
 }
