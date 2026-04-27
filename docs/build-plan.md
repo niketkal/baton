@@ -23,13 +23,13 @@
 | 1 | Monorepo scaffold | ✅ | `396e964` |
 | 2 | `@baton/schema` — ajv validator + codegen | ✅ | `ad57d9e` |
 | 3 | `@baton/store` — files-canonical + SQLite cache | ✅ | `da91bf8` |
-| 4 | `@baton/lint` — engine + first 6 BTN rules | ⏳ next |
+| 4 | `@baton/lint` — engine + first 5 canonical BTN rules (001, 002, 003, 004, 060) | ⏳ next |
 | 5 | `@baton/llm` — provider abstraction + cache | ⏳ |
 | 6 | `@baton/compiler` skeleton — pipeline + parsers + transcript parser | ⏳ |
 | 7 | `@baton/render` — generic + claude-code targets | ⏳ |
 | 8 | `@baton/cli` — commander scaffold + 5 commands wired (week-1 demo gate) | ⏳ |
 | 9 | Provenance + remark round-trip + selectively editable packet.md | ⏳ |
-| 10 | BTN015–BTN040 (provenance, freshness, repo-context, BTN060 secrets) | ⏳ |
+| 10 | BTN010–BTN040 (repo-context, freshness, AC, provenance per canonical doc) | ⏳ |
 | 11 | LLM extraction prompts (objective, attempts, AC, next-action) + cost reporting | ⏳ |
 | 12 | Renderers: codex + cursor + snapshot tests + token estimation | ⏳ |
 | 13 | Repo awareness: git refs, dirty-state, freshness scoring | ⏳ |
@@ -45,20 +45,20 @@ Pre-flip-public checklist (after Session 20): `SECURITY.md`, `CODEOWNERS`, branc
 
 ---
 
-## Session 4 — `@baton/lint` engine + first 6 rules
+## Session 4 — `@baton/lint` engine + first 5 canonical rules
 
 **Tech spec:** §4.1 (`@baton/lint`), §5.5 (lint rule interface), §15 week 2.
+**Canonical rule list:** `~/Projects/Ideas/baton/baton-lint-rules.md` — BTN numbers and rule semantics are normative.
 
 **Files to create:**
 - `packages/lint/src/types.ts` — `LintRule`, `LintReport`, `LintError`, `LintWarning`, `LintContext`, `Severity`
 - `packages/lint/src/engine.ts` — `lint(packet, ctx, opts) → LintReport`
 - `packages/lint/src/rules/index.ts` — explicit imports of every rule (no glob)
-- `packages/lint/src/rules/BTN001-required-fields.ts` — schema-level required fields present
-- `packages/lint/src/rules/BTN002-id-format.ts` — packet `id` matches `^[a-z0-9-]+$`
-- `packages/lint/src/rules/BTN003-status-valid.ts` — `status` ∈ enum
-- `packages/lint/src/rules/BTN004-validation-level-coherent.ts` — `validation_level` consistent with status
-- `packages/lint/src/rules/BTN005-objective-non-empty.ts` — objective text > 10 chars
-- `packages/lint/src/rules/BTN060-secret-scrubbing.ts` — uses heuristics in `secrets/`
+- `packages/lint/src/rules/BTN001-schema-version-supported.ts` — `schema_version === 'baton.packet/v1'`. Severity `critical`, `failInStrict: true`.
+- `packages/lint/src/rules/BTN002-packet-schema-valid.ts` — packet validates against `packet.schema.json` via `@baton/schema`'s `validatePacket`. Severity `critical`, `failInStrict: true`.
+- `packages/lint/src/rules/BTN003-required-narrative-fields-present.ts` — `objective`, `current_state`, `next_action` all non-empty. Severity `error`, `failInStrict: true`.
+- `packages/lint/src/rules/BTN004-confidence-score-bounded.ts` — `confidence_score` ∈ [0, 1]. Severity `error`, `failInStrict: true`.
+- `packages/lint/src/rules/BTN060-no-apparent-secrets-in-artifacts.ts` — uses heuristics in `secrets/`. Severity `critical`, `failInStrict: true`.
 - `packages/lint/src/secrets/prefixes.ts` — `sk-`, `sk-ant-`, `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `AKIA`, `ASIA`, `xox[bp]-`
 - `packages/lint/src/secrets/detect.ts` — prefix + PEM + `.env`-style + high-entropy detection
 - `packages/lint/src/index.ts` — re-exports
@@ -68,7 +68,7 @@ Pre-flip-public checklist (after Session 20): `SECURITY.md`, `CODEOWNERS`, branc
 **Deliverables:**
 - `lint(packet)` returns typed report, never throws
 - Strict mode (`opts.strict: true`) flips `failInStrict` rules from warnings to errors
-- 6 rules ship with good/bad fixtures
+- 5 canonical rules ship with good/bad fixtures (BTN001, 002, 003, 004, 060)
 - CLAUDE.md invariant satisfied: explicit imports in `rules/index.ts` (one per rule)
 
 **Verification:**
@@ -293,25 +293,24 @@ pnpm --filter @baton/compiler test
 
 ---
 
-## Session 10 — BTN015–BTN040 (provenance, freshness, repo-context) + finalize BTN060
+## Session 10 — BTN010–BTN040 (repo-context, freshness, AC, provenance)
 
-**Tech spec:** §13.2 (BTN060), `~/Projects/Ideas/baton/baton-lint-rules.md` for rule list.
+**Tech spec:** `~/Projects/Ideas/baton/baton-lint-rules.md` is normative for the rule list and gaps. Canonical rules in this range are: BTN010–BTN014 (repo / freshness), BTN020–BTN021 (acceptance criteria / open questions), BTN030–BTN033 (provenance), plus any BTN040-series listed in the doc up to but excluding the dispatch-gating ones (which land in Session 16).
 
 **Files to create:**
-- One file per rule under `packages/lint/src/rules/BTN<NNN>-<name>.ts` for BTN006–BTN040 (excluding the dispatch-gating BTN041–050 which land in Session 16)
+- One file per canonical rule under `packages/lint/src/rules/BTN<NNN>-<canonical-name>.ts` matching exactly the names in `baton-lint-rules.md`. Skip number gaps (no padding rules).
 - One good/bad fixture pair per rule
 - Append explicit imports to `packages/lint/src/rules/index.ts`
-- Tighten `secrets/detect.ts` to handle high-entropy detection per §13.2
+- Tighten `secrets/detect.ts` if the doc specifies behavior beyond what Session 4 implemented
 
 **Deliverables:**
-- Roughly 35 new rules (BTN006–BTN040)
+- Every canonical rule in BTN010–BTN040 implemented with fixtures
 - Confidence score calculation per MVP spec
-- Each rule has known-good and known-bad fixture
-- Strict mode behavior matches `failInStrict` flags
+- Strict mode behavior matches `failInStrict` flags from canonical doc
 
 **Verification:** `pnpm --filter @baton/lint test` — all rules + fixtures green.
 
-**Commit:** `feat(lint): implement BTN006-BTN040 with fixtures`
+**Commit:** `feat(lint): implement canonical BTN010-BTN040 rules with fixtures`
 
 ---
 
