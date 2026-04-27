@@ -1,0 +1,557 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://baton.dev/schema/packet-v1.json",
+  "title": "Baton Packet",
+  "description": "Canonical machine-readable task-state artifact for Baton.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "status",
+    "validation_level",
+    "task_type",
+    "objective",
+    "current_state",
+    "next_action",
+    "open_questions",
+    "confidence_score",
+    "repo_context",
+    "context_items",
+    "constraints",
+    "attempts",
+    "acceptance_criteria",
+    "warnings",
+    "provenance_links",
+    "source_artifacts",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "baton.packet/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready_for_export",
+        "awaiting_approval",
+        "dispatched",
+        "awaiting_outcome",
+        "needs_clarification",
+        "completed",
+        "abandoned"
+      ]
+    },
+    "validation_level": {
+      "type": "string",
+      "enum": ["draft", "valid", "verified", "ready"]
+    },
+    "task_type": {
+      "type": "string",
+      "enum": ["implementation", "debugging", "review", "docs", "analysis", "generic"]
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "current_state": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8000
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/openQuestion"
+      }
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "repo_context": {
+      "$ref": "#/$defs/repoContext"
+    },
+    "context_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/contextItem"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/constraint"
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attempt"
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/acceptanceCriterion"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warning"
+      }
+    },
+    "provenance_links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provenanceLink"
+      }
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourceArtifact"
+      }
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    },
+    "render_hints": {
+      "$ref": "#/$defs/renderHints"
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Reserved extension surface for non-normative metadata.",
+      "additionalProperties": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warning", "error", "critical"]
+    },
+    "artifactType": {
+      "type": "string",
+      "enum": ["transcript", "issue", "diff", "log", "note", "image", "test-report"]
+    },
+    "refPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "repoContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attached",
+        "root",
+        "vcs",
+        "branch",
+        "base_branch",
+        "commit",
+        "base_commit",
+        "dirty"
+      ],
+      "properties": {
+        "attached": {
+          "type": "boolean"
+        },
+        "root": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "vcs": {
+          "type": "string",
+          "enum": ["git", "none"]
+        },
+        "branch": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "base_branch": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "commit": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{7,40}$"
+        },
+        "base_commit": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{7,40}$"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "attached": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "root": {
+                "type": "string",
+                "minLength": 1
+              },
+              "vcs": {
+                "const": "git"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "openQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "blocking", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "blocking": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "answered", "waived"]
+        }
+      }
+    },
+    "contextItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref", "reason", "priority", "freshness_score", "provenance_refs"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["file", "directory", "command", "doc", "test", "symbol", "diff", "log", "issue"]
+        },
+        "ref": {
+          "$ref": "#/$defs/refPath"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "freshness_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "exists": {
+          "type": ["boolean", "null"]
+        },
+        "provenance_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+          }
+        }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "text", "severity", "source", "provenance_refs"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["product", "technical", "policy", "deadline", "style", "safety"]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["user", "repo", "ticket", "tool", "policy"]
+        },
+        "provenance_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+          }
+        }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tool",
+        "summary",
+        "result",
+        "failure_reason",
+        "artifact_refs",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "result": {
+          "type": "string",
+          "enum": ["succeeded", "failed", "partial", "blocked", "abandoned", "unknown"]
+        },
+        "failure_reason": {
+          "type": ["string", "null"],
+          "maxLength": 4000
+        },
+        "artifact_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "acceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "status", "required", "source", "provenance_refs"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["unmet", "met", "unknown"]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["user", "ticket", "derived"]
+        },
+        "provenance_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+          }
+        }
+      }
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "blocking", "source"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]{4,32}$"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "blocking": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["schema", "lint", "policy", "repo", "adapter"]
+        }
+      }
+    },
+    "provenanceLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "field_name", "artifact_id", "source_type", "ref"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "field_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "artifact_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "source_type": {
+          "$ref": "#/$defs/artifactType"
+        },
+        "ref": {
+          "$ref": "#/$defs/refPath"
+        },
+        "span_start": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "span_end": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "excerpt": {
+          "type": ["string", "null"],
+          "maxLength": 1000
+        }
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source_tool", "uri", "digest", "created_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "type": {
+          "$ref": "#/$defs/artifactType"
+        },
+        "source_tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "uri": {
+          "$ref": "#/$defs/refPath"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9:+._-]{8,256}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approval_required", "dispatch_allowed", "stale_context", "reasons"],
+      "properties": {
+        "approval_required": {
+          "type": "boolean"
+        },
+        "dispatch_allowed": {
+          "type": "boolean"
+        },
+        "stale_context": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "renderHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_target": {
+          "type": "string",
+          "enum": ["claude-code", "codex", "cursor", "generic"]
+        },
+        "context_budget": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 200000
+        },
+        "include_provenance": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
