@@ -165,9 +165,10 @@ an ADR draft first.
 
 ## Read-only internal context
 
-The folder `~/Projects/Ideas/baton-internal/` is internal strategy context
-(viability reviews, competitor map, monetization plan, cloud spec, pricing).
-You may read from it for background but never write to it, never copy from
-it directly into public-facing docs (rewrite fresh per the GitHub setup),
-and never reference it in commit messages, ADRs, or any file that ends up
-in this repo's git history.
+The folder `~/Projects/Ideas/baton/` is internal strategy context
+(viability reviews, competitor map, monetization plan, cloud spec, pricing,
+the source `baton-packet.schema.json`, MVP and tech specs). You may read
+from it for background but never write to it, never copy from it directly
+into public-facing docs (rewrite fresh per the GitHub setup), and never
+reference it in commit messages, ADRs, or any file that ends up in this
+repo's git history.
