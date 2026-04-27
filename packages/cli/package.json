@@ -1,0 +1,36 @@
+{
+  "name": "@baton/cli",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "description": "Baton command-line interface.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "baton": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint:logs": "node scripts/lint-logs.mjs"
+  },
+  "dependencies": {
+    "@baton/adapters": "workspace:*",
+    "@baton/compiler": "workspace:*",
+    "@baton/conformance": "workspace:*",
+    "@baton/integrations": "workspace:*",
+    "@baton/lint": "workspace:*",
+    "@baton/llm": "workspace:*",
+    "@baton/render": "workspace:*",
+    "@baton/schema": "workspace:*",
+    "@baton/store": "workspace:*"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@baton/schema",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "description": "Baton packet JSON Schema (CC0) and generated TypeScript types.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "packet.schema.json", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

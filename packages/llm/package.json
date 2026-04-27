@@ -1,0 +1,24 @@
+{
+  "name": "@baton/llm",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "description": "Baton BYOK LLM provider abstraction.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@baton/schema": "workspace:*"
+  }
+}

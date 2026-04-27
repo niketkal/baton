@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+.DS_Store
+.vscode/
+.idea/
+
+.env
+.env.local
+.env.*.local
+
+.baton/
+*.log
+
+# Generated
+pnpm-debug.log*
+.changeset/*.md
+!.changeset/README.md
+!.changeset/config.json
