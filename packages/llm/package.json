@@ -20,5 +20,23 @@
   },
   "dependencies": {
     "@baton/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "0.32.1",
+    "@anthropic-ai/tokenizer": "0.0.4",
+    "js-tiktoken": "1.0.16",
+    "openai": "4.77.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": "*",
+    "@anthropic-ai/tokenizer": "*",
+    "js-tiktoken": "*",
+    "openai": "*"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": { "optional": true },
+    "@anthropic-ai/tokenizer": { "optional": true },
+    "js-tiktoken": { "optional": true },
+    "openai": { "optional": true }
   }
 }
