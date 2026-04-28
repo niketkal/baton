@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCompile, runIngest } from '../../src/commands/index.js';
-import { resetLoggerCacheForTests } from '../../src/output/logger.js';
+import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';
 
 const TRANSCRIPT_FIXTURE = '## User\nplz fix\n\n## Assistant\nok.\n';
 const LOG_FIXTURE = 'INFO foo\nERROR bar\n';
@@ -15,9 +15,11 @@ describe('compile (Fix 3: warnings in human stderr)', () => {
     dir = mkdtempSync(join(tmpdir(), 'baton-compile-warn-'));
     resetLoggerCacheForTests();
   });
-  afterEach(() => {
-    resetLoggerCacheForTests();
-    rmSync(dir, { recursive: true, force: true });
+  afterEach(async () => {
+    // Close pino's file handle before rmSync; on Windows an open handle
+    // blocks `rmdir` of the parent `.baton/logs` directory (`ENOTEMPTY`).
+    await closeLogger();
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('writes each compile warning code to stderr in human mode', async () => {

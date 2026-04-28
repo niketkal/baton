@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runFailover, runIngest } from '../../src/commands/index.js';
-import { resetLoggerCacheForTests } from '../../src/output/logger.js';
+import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';
 
 const TRANSCRIPT_FIXTURE = `## User
 We're trying to stabilize the flaky login test. Repro from CI is in failing-test.log.
@@ -25,9 +25,11 @@ describe('e2e: failover (week-1 demo gate)', () => {
     dir = mkdtempSync(join(tmpdir(), 'baton-e2e-'));
     resetLoggerCacheForTests();
   });
-  afterEach(() => {
-    resetLoggerCacheForTests();
-    rmSync(dir, { recursive: true, force: true });
+  afterEach(async () => {
+    // Close pino's file handle before rmSync; on Windows an open handle
+    // blocks `rmdir` of the parent `.baton/logs` directory (`ENOTEMPTY`).
+    await closeLogger();
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('ingests a transcript and renders BATON.md via failover', async () => {

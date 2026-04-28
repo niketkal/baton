@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runIngest } from '../../src/commands/index.js';
-import { resetLoggerCacheForTests } from '../../src/output/logger.js';
+import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, '..', '..');
@@ -33,9 +33,11 @@ describe('ingest', () => {
     dir = mkdtempSync(join(tmpdir(), 'baton-ingest-'));
     resetLoggerCacheForTests();
   });
-  afterEach(() => {
-    resetLoggerCacheForTests();
-    rmSync(dir, { recursive: true, force: true });
+  afterEach(async () => {
+    // Close pino's file handle before rmSync; on Windows an open handle
+    // blocks `rmdir` of the parent `.baton/logs` directory (`ENOTEMPTY`).
+    await closeLogger();
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('streams a small file source through to the artifact dir', async () => {

@@ -30,7 +30,7 @@ vi.mock('@baton/lint', async () => {
 });
 
 import { runFailover, runIngest } from '../../src/commands/index.js';
-import { resetLoggerCacheForTests } from '../../src/output/logger.js';
+import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';
 
 const TRANSCRIPT_FIXTURE = '## User\nrepro flaky test\n\n## Assistant\non it.\n';
 
@@ -40,9 +40,11 @@ describe('failover (Fix 1: lint OR schema-invalid blocks)', () => {
     dir = mkdtempSync(join(tmpdir(), 'baton-failover-gate-'));
     resetLoggerCacheForTests();
   });
-  afterEach(() => {
-    resetLoggerCacheForTests();
-    rmSync(dir, { recursive: true, force: true });
+  afterEach(async () => {
+    // Close pino's file handle before rmSync; on Windows an open handle
+    // blocks `rmdir` of the parent `.baton/logs` directory (`ENOTEMPTY`).
+    await closeLogger();
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('exits 2 and skips BATON.md when lint errors but schema validates', async () => {

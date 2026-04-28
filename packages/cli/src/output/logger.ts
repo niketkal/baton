@@ -8,6 +8,10 @@ import { type Logger, pino } from 'pino';
  * repeatedly) share one file handle.
  */
 const cache = new Map<string, Logger>();
+// Track the underlying SonicBoom destinations so tests can close the file
+// handles before deleting the temp directory. On Windows an open handle
+// blocks `rmdir` of the parent (`ENOTEMPTY`); on POSIX it's silently fine.
+const destinations = new Map<string, ReturnType<typeof pino.destination>>();
 let bannerPrinted = false;
 
 function resolveLogLevel(): string {
@@ -72,7 +76,50 @@ export function getLogger(repoRoot: string): LoggerHandle {
     destination,
   );
   cache.set(filePath, logger);
+  destinations.set(filePath, destination);
   return { logger, unsafe, filePath };
+}
+
+/**
+ * Flush and close all open log file handles. Tests must `await` this
+ * before deleting the temp `.baton/logs` directory on Windows, where
+ * an open handle blocks `rmdir` of the parent (`ENOTEMPTY`).
+ *
+ * Safe to call when no logger is open (no-op).
+ */
+export async function closeLogger(): Promise<void> {
+  const dests = Array.from(destinations.values());
+  cache.clear();
+  destinations.clear();
+  bannerPrinted = false;
+  await Promise.all(
+    dests.map(
+      (dest) =>
+        new Promise<void>((resolve) => {
+          try {
+            dest.flushSync();
+          } catch {
+            // best-effort
+          }
+          // SonicBoom is an EventEmitter; emit `'close'` when fd is released.
+          let settled = false;
+          const done = (): void => {
+            if (settled) return;
+            settled = true;
+            resolve();
+          };
+          try {
+            dest.once('close', done);
+            dest.once('error', done);
+            dest.end();
+            // Belt-and-suspenders: don't hang teardown if `'close'` never fires.
+            setTimeout(done, 200);
+          } catch {
+            done();
+          }
+        }),
+    ),
+  );
 }
 
 /**
@@ -88,5 +135,8 @@ export function resetLoggerCacheForTests(): void {
     }
   }
   cache.clear();
+  // Note: leaves `destinations` populated so a subsequent `closeLogger()`
+  // can still end the underlying SonicBoom streams. `closeLogger()` is
+  // the preferred teardown API; this sync reset remains for compatibility.
   bannerPrinted = false;
 }
