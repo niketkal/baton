@@ -27,18 +27,18 @@
 | 5 | `@baton/llm` — provider abstraction + cache | ✅ `583f9cc` + `4c484fd` (polish) |
 | 6 | `@baton/compiler` skeleton — pipeline + parsers + transcript parser | ✅ `3c12c61` + `9523238` (polish) |
 | 7 | `@baton/render` — generic + claude-code targets | ✅ `10b5d0f` (PR #1 squashed) |
-| 8 | `@baton/cli` — commander scaffold + 5 commands wired (week-1 demo gate) | ⏳ next |
-| 9 | Provenance + remark round-trip + selectively editable packet.md | ⏳ |
-| 10 | BTN010–BTN040 (repo-context, freshness, AC, provenance per canonical doc) | ⏳ |
+| 8 | `@baton/cli` — commander scaffold + 5 commands wired (week-1 demo gate) | ✅ `f128820` (PR #4 squashed, wave 1 parallel) |
+| 9 | Provenance + remark round-trip + selectively editable packet.md | ⏳ wave 2 |
+| 10 | BTN010–BTN040 (repo-context, freshness, AC, provenance per canonical doc) | ✅ `37ce974` (PR #3 squashed, wave 1 parallel) |
 | 11 | LLM extraction prompts (objective, attempts, AC, next-action) + cost reporting | ⏳ |
-| 12 | Renderers: codex + cursor + snapshot tests + token estimation | ⏳ |
+| 12 | Renderers: codex + cursor + snapshot tests + token estimation | ✅ `c0231b5` (PR #2 squashed, wave 1 parallel) |
 | 13 | Repo awareness: git refs, dirty-state, freshness scoring | ⏳ |
-| 14 | `@baton/integrations/claude-code` native hook + `baton init`/`uninstall` | ⏳ |
+| 14 | `@baton/integrations/claude-code` native hook + `baton init`/`uninstall` | ⏳ wave 2 |
 | 15 | `@baton/integrations/codex` wrapper launcher + Cursor paste flow + `baton outcome` | ⏳ |
 | 16 | BTN041–BTN050 dispatch-gating rules + `baton dispatch` + `baton history` | ⏳ |
 | 17 | `@baton/conformance` — runner + 5–10 reference cases | ⏳ |
 | 18 | Performance budgets in CI + `baton failover` end-to-end + cold-start optimization | ⏳ |
-| 19 | `baton migrate` skeleton + Homebrew formula + npm publish workflow | ⏳ |
+| 19 | `baton migrate` skeleton + Homebrew formula + npm publish workflow | ⏳ wave 2 |
 | 20 | Docs polish: README, CONTRIBUTING, 4 contributor guides, ADRs 0001–0010 | ⏳ |
 
 Pre-flip-public checklist (after Session 20): `SECURITY.md`, `CODEOWNERS`, branch protection on `main`, npm `@baton` org, npm trusted publishing config, GitHub Environment for `npm-publish`, pre-flip grep for competitor names / commercial framing.
