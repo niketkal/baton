@@ -1,0 +1,21 @@
+TASK: Fix flaky auth test
+
+FILES:
+  - test/auth-flow.spec.ts (file, p1) — Flaky test under investigation
+  - fixtures/auth.ts (file, p2) — Contains lazy initialisation with the race condition at line 42
+
+CONTEXT:
+Objective: Identify and fix the race condition in auth-flow.spec.ts that causes it to fail on CI one run in three.
+Current state: Reproduced failure on iteration 4 of 10. Root cause is unsynchronised lazy initialisation in fixtures/auth.ts:42.
+Repo: branch=fix/flaky-auth base=main commit=abc1234 (clean)
+
+ACCEPTANCE CRITERIA:
+  1. [todo] auth-flow.spec.ts passes 10/10 with --repeat-each=10 on CI
+
+CONSTRAINTS:
+  - [error] No changes to public auth API surface during the fix.
+
+OPEN QUESTIONS:
+  - Should the fix land on `main` or the release branch?
+
+NEXT ACTION: Add a memoisation wrapper around the auth fixture loader and add a regression test using --repeat-each=10.
