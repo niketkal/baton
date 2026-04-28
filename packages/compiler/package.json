@@ -22,6 +22,10 @@
     "@baton/schema": "workspace:*",
     "@baton/lint": "workspace:*",
     "@baton/llm": "workspace:*",
-    "@baton/store": "workspace:*"
+    "@baton/store": "workspace:*",
+    "remark-parse": "11.0.0",
+    "remark-stringify": "11.0.0",
+    "simple-git": "3.27.0",
+    "unified": "11.0.5"
   }
 }
