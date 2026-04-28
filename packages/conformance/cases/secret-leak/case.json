@@ -1,0 +1,16 @@
+{
+  "id": "secret-leak",
+  "description": "Session where the user pastes a fake sk-test-... token into the transcript; expected to trigger BTN060 secret detection.",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/transcript.md" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1"
+    },
+    "lintResult": {
+      "passed": false,
+      "codes": ["BTN060"]
+    }
+  }
+}

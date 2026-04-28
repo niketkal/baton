@@ -6,21 +6,25 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "baton-conformance": "./dist/bin/baton-conformance.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "cases", "README.md"],
+  "files": ["dist", "cases", "benchmark", "README.md"],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/bin/baton-conformance.ts --format esm --dts --clean --target node20",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@baton/lint": "workspace:*",
     "@baton/render": "workspace:*",
-    "@baton/schema": "workspace:*"
+    "@baton/schema": "workspace:*",
+    "commander": "12.1.0"
   }
 }

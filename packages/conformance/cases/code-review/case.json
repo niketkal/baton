@@ -1,0 +1,16 @@
+{
+  "id": "code-review",
+  "description": "Session reviewing a PR that refactors cache eviction; identifies a clock-read hoist and missing boundary tests.",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/transcript.md" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1",
+      "task_type": "review"
+    },
+    "lintResult": {
+      "passed": true
+    }
+  }
+}

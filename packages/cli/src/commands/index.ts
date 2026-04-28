@@ -9,6 +9,7 @@
 // See test/performance/cold-start.test.ts for the regression check.
 import type { Command } from 'commander';
 import { registerCompile } from './compile.js';
+import { registerConformance } from './conformance.js';
 import { registerFailover } from './failover.js';
 import { registerIngest } from './ingest.js';
 import { registerInit } from './init.js';
@@ -26,6 +27,7 @@ export function registerCommands(program: Command): void {
   registerLint(program);
   registerFailover(program);
   registerMigrate(program);
+  registerConformance(program);
 }
 
 export { runInit } from './init.js';
@@ -36,3 +38,4 @@ export { runRender } from './render.js';
 export { runLint } from './lint.js';
 export { runFailover } from './failover.js';
 export { runMigrate } from './migrate.js';
+export { runConformanceCommand } from './conformance.js';
