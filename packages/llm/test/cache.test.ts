@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -93,5 +93,52 @@ describe('LLMCache', () => {
     expect(await c.get('a')).not.toBeNull();
     expect(await c.get('c')).not.toBeNull();
     expect(c.totalBytes()).toBeLessThanOrEqual(oneEntryBytes * 2 + 10);
+  });
+
+  it('serialises concurrent set() calls without losing entries or busting the budget', async () => {
+    const big = 'Y'.repeat(1024);
+    // Size budget for ~3 entries; 10 concurrent sets must evict down to it.
+    const probe = new LLMCache({ root: `${dir}-probe2`, maxBytes: 10_000_000 });
+    await probe.set('probe', makeResult(big));
+    const oneEntryBytes = probe.totalBytes();
+    rmSync(`${dir}-probe2`, { recursive: true, force: true });
+
+    const maxBytes = oneEntryBytes * 3 + 16;
+    const c = new LLMCache({ root: dir, maxBytes });
+    const writes = Array.from({ length: 10 }, (_, i) => c.set(`k${i}`, makeResult(big)));
+    await Promise.all(writes);
+
+    // Index byte total within budget.
+    expect(c.totalBytes()).toBeLessThanOrEqual(maxBytes);
+    // No orphan files: every `<key>.json` must be in the index, and every
+    // index entry must have its file on disk.
+    const onDisk = new Set(
+      readdirSync(dir).filter((n) => n.endsWith('.json') && n !== 'index.json'),
+    );
+    expect(c.diskBytes()).toBeLessThanOrEqual(maxBytes);
+    // Pull keys from the index by stat-ing the files: round-trip via get().
+    let presentInIndex = 0;
+    for (let i = 0; i < 10; i++) {
+      const got = await c.get(`k${i}`);
+      if (got !== null) presentInIndex++;
+    }
+    // Files-on-disk count matches index-tracked entries.
+    expect(onDisk.size).toBe(presentInIndex);
+  });
+
+  it('survives a corrupted index.json by rebuilding from disk', async () => {
+    const c1 = new LLMCache({ root: dir });
+    await c1.set('keep-me', makeResult('payload'));
+    // Corrupt the index.
+    writeFileSync(path.join(dir, 'index.json'), '{not json at all', 'utf8');
+    // New instance — should not throw on read or write.
+    const c2 = new LLMCache({ root: dir });
+    await expect(c2.set('new-one', makeResult('also-payload'))).resolves.toBeUndefined();
+    // Original entry should still be retrievable because rebuild walked
+    // the dir rather than catastrophically evicting.
+    const kept = await c2.get('keep-me');
+    expect(kept?.text).toBe('payload');
+    const fresh = await c2.get('new-one');
+    expect(fresh?.text).toBe('also-payload');
   });
 });

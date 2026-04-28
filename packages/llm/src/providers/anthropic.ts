@@ -6,6 +6,13 @@
  * Every public method that needs the SDK uses a dynamic `import()` inside
  * the function body. When the package isn't installed we surface a friendly
  * `LLMNotConfiguredError` rather than a raw module-not-found.
+ *
+ * JSON response format:
+ *   The Anthropic Messages API (SDK v0.32.x) has no native `response_format`
+ *   knob equivalent to OpenAI's `{ type: 'json_object' }`. To honor
+ *   `CompleteOptions.responseFormat === 'json'` consistently across providers
+ *   we append a strict JSON-only instruction to the caller's system prompt.
+ *   This is the workaround Anthropic itself recommends in their docs.
  */
 
 import { LLMNotConfiguredError, LLMProviderError } from '../errors.js';
@@ -15,6 +22,12 @@ import type { CompleteOptions, CompleteResult, LLMConfig, LLMProvider } from '..
 // TODO: revisit default model name once Anthropic publishes the next stable
 // snapshot; pinning to a dated alias keeps reproducibility for v1.
 const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
+
+function isAbortLike(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const name = (err as { name?: unknown }).name;
+  return name === 'AbortError' || name === 'APIUserAbortError';
+}
 
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
@@ -49,14 +62,21 @@ export class AnthropicProvider implements LLMProvider {
       ...(this.config.baseUrl ? { baseURL: this.config.baseUrl } : {}),
     });
     const model = opts.model ?? this.config.model ?? DEFAULT_MODEL;
+    const effectiveSystemPrompt =
+      opts.responseFormat === 'json'
+        ? `${opts.systemPrompt}\n\nRespond ONLY with a single valid JSON object. Do not include markdown fences, prose explanations, or anything outside the JSON.`
+        : opts.systemPrompt;
     try {
-      const resp = await client.messages.create({
-        model,
-        max_tokens: opts.maxTokens ?? 1024,
-        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-        system: opts.systemPrompt,
-        messages: [{ role: 'user', content: opts.userPrompt }],
-      });
+      const resp = await client.messages.create(
+        {
+          model,
+          max_tokens: opts.maxTokens ?? 1024,
+          ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+          system: effectiveSystemPrompt,
+          messages: [{ role: 'user', content: opts.userPrompt }],
+        },
+        opts.signal ? { signal: opts.signal } : undefined,
+      );
       // The SDK returns `content: Array<{ type: 'text'; text: string } | …>`.
       const text = Array.isArray(resp?.content)
         ? resp.content
@@ -78,6 +98,22 @@ export class AnthropicProvider implements LLMProvider {
       };
     } catch (err) {
       if (err instanceof LLMNotConfiguredError) throw err;
+      // If the SDK threw because the caller aborted, re-throw a DOMException-
+      // shaped AbortError so callers can `instanceof DOMException` or check
+      // `err.name === 'AbortError'`.
+      if (isAbortLike(err) || opts.signal?.aborted) {
+        const reason = opts.signal?.reason;
+        const abortErr =
+          typeof DOMException !== 'undefined'
+            ? new DOMException(
+                reason instanceof Error ? reason.message : 'The operation was aborted.',
+                'AbortError',
+              )
+            : Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' });
+        // Preserve the original cause for diagnostics.
+        (abortErr as { cause?: unknown }).cause = reason ?? err;
+        throw abortErr;
+      }
       throw new LLMProviderError(
         'anthropic',
         err instanceof Error ? err.message : 'Anthropic call failed',

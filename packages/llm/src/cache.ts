@@ -7,11 +7,31 @@
  * - LRU bookkeeping lives in `<root>/index.json`; on every `set` we evict the
  *   least-recently-used entries until total size is within `maxBytes`.
  *
+ * Durability + concurrency:
+ * - Index and entry writes are atomic: write-to-`*.tmp` followed by
+ *   `renameSync`. POSIX guarantees readers see either the old file or the
+ *   new file, never a truncated one.
+ * - In-process `get`/`set` calls are serialised through a Promise chain so
+ *   concurrent writes can't lose entries or corrupt the index. Cross-process
+ *   serialisation is intentionally out of scope — Baton is a CLI and runs as
+ *   a single process per invocation.
+ * - If `index.json` is missing or unreadable we rebuild it by walking the
+ *   cache directory rather than catastrophically evicting on next `set`.
+ *
  * The default cache root is `<cwd>/.baton/llm-cache/` per tech spec §7.
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import type { CacheKey, CompleteResult } from './types.js';
 
@@ -67,10 +87,21 @@ export interface LLMCacheOptions {
   maxBytes?: number;
 }
 
+/** Atomic write: write to `<dest>.tmp`, then rename onto `<dest>`. */
+function atomicWriteFileSync(dest: string, payload: string): void {
+  // Use a per-call random suffix so concurrent writers never clobber each
+  // other's tmp file before the rename.
+  const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+  writeFileSync(tmp, payload, 'utf8');
+  renameSync(tmp, dest);
+}
+
 export class LLMCache {
   readonly root: string;
   readonly maxBytes: number;
   private readonly indexPath: string;
+  /** Promise chain that serialises in-process get/set operations. */
+  private chain: Promise<unknown> = Promise.resolve();
 
   constructor(opts: LLMCacheOptions) {
     this.root = opts.root;
@@ -82,64 +113,119 @@ export class LLMCache {
     if (!existsSync(this.root)) mkdirSync(this.root, { recursive: true });
   }
 
+  /**
+   * Wrap a body so that no two cache operations on the same instance run
+   * concurrently. Errors don't poison the chain — subsequent ops still run.
+   */
+  private serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.chain.then(fn, fn);
+    this.chain = next.catch(() => undefined);
+    return next;
+  }
+
   private readIndex(): IndexFile {
     if (!existsSync(this.indexPath)) return { entries: {} };
     try {
       const raw = readFileSync(this.indexPath, 'utf8');
       const parsed = JSON.parse(raw) as IndexFile;
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.entries !== 'object') {
+        throw new Error('malformed index');
+      }
       return { entries: parsed.entries ?? {} };
-    } catch {
-      return { entries: {} };
+    } catch (err) {
+      // Don't return an empty index — that would let the next set() evict
+      // every entry as "orphaned." Walk the cache dir and reconstruct.
+      const message = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[baton/llm] cache index at ${this.indexPath} unreadable (${message}); rebuilding from disk.`,
+      );
+      return this.rebuildIndex();
     }
+  }
+
+  /** Walk the cache directory and reconstruct the index from files on disk. */
+  private rebuildIndex(): IndexFile {
+    const entries: Record<CacheKey, IndexEntry> = {};
+    if (!existsSync(this.root)) return { entries };
+    let names: string[] = [];
+    try {
+      names = readdirSync(this.root);
+    } catch {
+      return { entries };
+    }
+    for (const name of names) {
+      if (!name.endsWith('.json') || name === 'index.json') continue;
+      // Skip transient tmp files from a crashed write.
+      if (name.includes('.tmp')) continue;
+      const key = name.slice(0, -'.json'.length);
+      const file = path.join(this.root, name);
+      try {
+        const st = statSync(file);
+        entries[key] = { size: st.size, lastAccessed: st.mtimeMs };
+      } catch {
+        // ignore — stat could race with eviction
+      }
+    }
+    return { entries };
   }
 
   private writeIndex(idx: IndexFile): void {
     this.ensureRoot();
-    writeFileSync(this.indexPath, JSON.stringify(idx), 'utf8');
+    atomicWriteFileSync(this.indexPath, JSON.stringify(idx));
   }
 
   private entryPath(key: CacheKey): string {
     return path.join(this.root, `${key}.json`);
   }
 
-  async get(key: CacheKey): Promise<CompleteResult | null> {
-    const file = this.entryPath(key);
-    if (!existsSync(file)) return null;
-    try {
-      const raw = readFileSync(file, 'utf8');
-      const result = JSON.parse(raw) as CompleteResult;
-      // Touch LRU
-      const idx = this.readIndex();
-      const entry = idx.entries[key];
-      if (entry) {
-        entry.lastAccessed = Date.now();
-        this.writeIndex(idx);
+  get(key: CacheKey): Promise<CompleteResult | null> {
+    return this.serialize(async () => {
+      const file = this.entryPath(key);
+      if (!existsSync(file)) return null;
+      try {
+        const raw = readFileSync(file, 'utf8');
+        const result = JSON.parse(raw) as CompleteResult;
+        // Touch LRU
+        const idx = this.readIndex();
+        const entry = idx.entries[key];
+        if (entry) {
+          entry.lastAccessed = Date.now();
+          this.writeIndex(idx);
+        }
+        // Mark as cached on read regardless of stored value.
+        return { ...result, cached: true };
+      } catch {
+        return null;
       }
-      // Mark as cached on read regardless of stored value.
-      return { ...result, cached: true };
-    } catch {
-      return null;
-    }
+    });
   }
 
-  async set(key: CacheKey, result: CompleteResult): Promise<void> {
-    this.ensureRoot();
-    const file = this.entryPath(key);
-    // Persist the underlying value with `cached: false`; reads layer the flag.
-    const payload = JSON.stringify({ ...result, cached: false });
-    writeFileSync(file, payload, 'utf8');
-    const size = Buffer.byteLength(payload, 'utf8');
-    const idx = this.readIndex();
-    idx.entries[key] = { size, lastAccessed: Date.now() };
-    this.writeIndex(idx);
-    this.evict();
+  set(key: CacheKey, result: CompleteResult): Promise<void> {
+    return this.serialize(async () => {
+      this.ensureRoot();
+      const file = this.entryPath(key);
+      // Persist the underlying value with `cached: false`; reads layer the flag.
+      const payload = JSON.stringify({ ...result, cached: false });
+      atomicWriteFileSync(file, payload);
+      const size = Buffer.byteLength(payload, 'utf8');
+      const idx = this.readIndex();
+      idx.entries[key] = { size, lastAccessed: Date.now() };
+      this.writeIndex(idx);
+      this.evictInternal();
+    });
   }
 
   /**
    * Drop the least-recently-used entries until total size is within budget.
-   * Safe to call manually (used in tests).
+   * Safe to call manually (used in tests). Public callers go through this
+   * un-serialised wrapper because eviction is idempotent.
    */
   evict(): void {
+    this.evictInternal();
+  }
+
+  private evictInternal(): void {
     const idx = this.readIndex();
     const keys = Object.keys(idx.entries);
     let total = 0;

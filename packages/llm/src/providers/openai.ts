@@ -10,6 +10,12 @@ import type { CompleteOptions, CompleteResult, LLMConfig, LLMProvider } from '..
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
+function isAbortLike(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const name = (err as { name?: unknown }).name;
+  return name === 'AbortError' || name === 'APIUserAbortError';
+}
+
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
   private readonly config: LLMConfig;
@@ -44,16 +50,19 @@ export class OpenAIProvider implements LLMProvider {
     });
     const model = opts.model ?? this.config.model ?? DEFAULT_MODEL;
     try {
-      const resp = await client.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: opts.systemPrompt },
-          { role: 'user', content: opts.userPrompt },
-        ],
-        ...(opts.maxTokens !== undefined ? { max_tokens: opts.maxTokens } : {}),
-        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-        ...(opts.responseFormat === 'json' ? { response_format: { type: 'json_object' } } : {}),
-      });
+      const resp = await client.chat.completions.create(
+        {
+          model,
+          messages: [
+            { role: 'system', content: opts.systemPrompt },
+            { role: 'user', content: opts.userPrompt },
+          ],
+          ...(opts.maxTokens !== undefined ? { max_tokens: opts.maxTokens } : {}),
+          ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+          ...(opts.responseFormat === 'json' ? { response_format: { type: 'json_object' } } : {}),
+        },
+        opts.signal ? { signal: opts.signal } : undefined,
+      );
       const text = String(resp?.choices?.[0]?.message?.content ?? '');
       const tokensIn = Number(resp?.usage?.prompt_tokens ?? 0) || roughEstimate(opts.userPrompt);
       const tokensOut = Number(resp?.usage?.completion_tokens ?? 0) || roughEstimate(text);
@@ -67,6 +76,18 @@ export class OpenAIProvider implements LLMProvider {
       };
     } catch (err) {
       if (err instanceof LLMNotConfiguredError) throw err;
+      if (isAbortLike(err) || opts.signal?.aborted) {
+        const reason = opts.signal?.reason;
+        const abortErr =
+          typeof DOMException !== 'undefined'
+            ? new DOMException(
+                reason instanceof Error ? reason.message : 'The operation was aborted.',
+                'AbortError',
+              )
+            : Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' });
+        (abortErr as { cause?: unknown }).cause = reason ?? err;
+        throw abortErr;
+      }
       throw new LLMProviderError(
         'openai',
         err instanceof Error ? err.message : 'OpenAI call failed',
