@@ -1,0 +1,102 @@
+import { roughEstimate } from '@baton/llm';
+import type { BatonPacket } from '@baton/schema';
+import {
+  sectionAcceptanceCriteria,
+  sectionAttempts,
+  sectionConstraints,
+  sectionContextItems,
+  sectionCurrentState,
+  sectionNextAction,
+  sectionObjective,
+  sectionOpenQuestions,
+  sectionProvenance,
+  sectionRepo,
+} from '../templates/sections.js';
+import type { RenderOptions, RenderResult, Renderer } from '../types.js';
+
+function resolveContextLimit(
+  packet: BatonPacket,
+  options: RenderOptions | undefined,
+  preamble: string,
+): { limit: number | undefined; truncated: boolean } {
+  const budget =
+    options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
+  if (budget === undefined) return { limit: undefined, truncated: false };
+  const preambleTokens = roughEstimate(preamble);
+  const remaining = budget - preambleTokens;
+  if (remaining <= 0) return { limit: 0, truncated: packet.context_items.length > 0 };
+  const firstItem = packet.context_items[0];
+  const perItemTokens = firstItem
+    ? roughEstimate(`| 1 | ${firstItem.kind} | ${firstItem.ref} | ${firstItem.reason} |`)
+    : 20;
+  const limit = Math.max(0, Math.floor(remaining / perItemTokens));
+  return {
+    limit,
+    truncated: limit < packet.context_items.length,
+  };
+}
+
+function buildMarkdown(
+  packet: BatonPacket,
+  options: RenderOptions | undefined,
+): { markdown: string; truncated: boolean } {
+  const confidence = `${Math.round(packet.confidence_score * 100)}%`;
+  const header = [
+    `# ${packet.title}`,
+    '',
+    `**Status:** ${packet.status} · **Confidence:** ${confidence} · **Type:** ${packet.task_type}`,
+  ].join('\n');
+
+  const preamble = [
+    header,
+    '',
+    sectionObjective(packet.objective),
+    '',
+    sectionCurrentState(packet.current_state),
+    '',
+    sectionNextAction(packet.next_action),
+  ].join('\n');
+
+  const { limit, truncated } = resolveContextLimit(packet, options, preamble);
+  const contextSection = sectionContextItems(packet.context_items, limit);
+  const acSection = sectionAcceptanceCriteria(packet.acceptance_criteria);
+  const oqSection = sectionOpenQuestions(packet.open_questions);
+  const conSection = sectionConstraints(packet.constraints);
+  const attSection = sectionAttempts(packet.attempts);
+  const repoSection = sectionRepo(packet.repo_context);
+
+  const includeProvenance =
+    options?.includeProvenance ?? packet.render_hints?.include_provenance ?? false;
+  const provSection = includeProvenance ? sectionProvenance(packet.provenance_links) : '';
+
+  const parts = [
+    preamble,
+    acSection,
+    oqSection,
+    conSection,
+    contextSection,
+    attSection,
+    repoSection,
+    provSection,
+  ].filter(Boolean);
+
+  const truncatedNote = truncated
+    ? '\n> _Context list truncated to stay within token budget._'
+    : '';
+
+  return { markdown: parts.join('\n\n') + truncatedNote, truncated };
+}
+
+export const genericRenderer: Renderer = {
+  target: 'generic',
+  render(packet: BatonPacket, options?: RenderOptions): RenderResult {
+    const { markdown, truncated } = buildMarkdown(packet, options);
+    return {
+      markdown,
+      target: 'generic',
+      tokenEstimate: roughEstimate(markdown),
+      warnings: [],
+      truncated,
+    };
+  },
+};
