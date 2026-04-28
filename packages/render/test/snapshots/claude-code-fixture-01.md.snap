@@ -1,0 +1,46 @@
+# Baton Handoff — Fix flaky auth test
+
+> **Next action:** Add a memoisation wrapper around the auth fixture loader and add a regression test using --repeat-each=10.
+
+## Objective
+
+Identify and fix the race condition in auth-flow.spec.ts that causes it to fail on CI one run in three.
+
+## Current State
+
+Reproduced failure on iteration 4 of 10. Root cause is unsynchronised lazy initialisation in fixtures/auth.ts:42.
+
+## Acceptance Criteria
+
+- [ ] auth-flow.spec.ts passes 10/10 with --repeat-each=10 on CI
+
+## Open Questions
+
+- Should the fix land on `main` or the release branch?
+
+## Constraints
+
+- **[error]** No changes to public auth API surface during the fix.
+
+## Context Files
+
+<context priority="1">
+**test/auth-flow.spec.ts** (file) — Flaky test under investigation
+</context>
+
+<context priority="2">
+**fixtures/auth.ts** (file) — Contains lazy initialisation with the race condition at line 42
+</context>
+
+## Prior Attempts
+
+### 1. claude-code — partial
+
+Reproduced the failure using --repeat-each=10. Traced to unsynchronised lazy init in fixtures/auth.ts:42.
+
+## Repo
+
+Branch: `fix/flaky-auth` · Base: `main` · Commit: `abc1234` · Clean
+
+---
+_Rendered by Baton · Confidence: 85% · Status: ready_for_export_
