@@ -13,6 +13,7 @@ import { registerFailover } from './failover.js';
 import { registerIngest } from './ingest.js';
 import { registerInit } from './init.js';
 import { registerLint } from './lint.js';
+import { registerMigrate } from './migrate.js';
 import { registerRender } from './render.js';
 
 export function registerCommands(program: Command): void {
@@ -22,6 +23,7 @@ export function registerCommands(program: Command): void {
   registerRender(program);
   registerLint(program);
   registerFailover(program);
+  registerMigrate(program);
 }
 
 export { runInit } from './init.js';
@@ -30,3 +32,4 @@ export { runCompile, collectArtifacts } from './compile.js';
 export { runRender } from './render.js';
 export { runLint } from './lint.js';
 export { runFailover } from './failover.js';
+export { runMigrate } from './migrate.js';

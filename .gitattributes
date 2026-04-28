@@ -1,0 +1,12 @@
+# Normalize line endings to LF for all text files in this repo.
+# Prevents Windows checkouts from introducing CRLF that would cause
+# packet runners (baton compile / baton migrate) to rewrite files
+# they consider "unchanged" but byte-different on disk.
+* text=auto eol=lf
+
+# Keep binary explicit
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.lock binary
