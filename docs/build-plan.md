@@ -23,11 +23,11 @@
 | 1 | Monorepo scaffold | ✅ | `396e964` |
 | 2 | `@baton/schema` — ajv validator + codegen | ✅ | `ad57d9e` |
 | 3 | `@baton/store` — files-canonical + SQLite cache | ✅ | `da91bf8` |
-| 4 | `@baton/lint` — engine + first 5 canonical BTN rules (001, 002, 003, 004, 060) | ⏳ next |
-| 5 | `@baton/llm` — provider abstraction + cache | ⏳ |
-| 6 | `@baton/compiler` skeleton — pipeline + parsers + transcript parser | ⏳ |
-| 7 | `@baton/render` — generic + claude-code targets | ⏳ |
-| 8 | `@baton/cli` — commander scaffold + 5 commands wired (week-1 demo gate) | ⏳ |
+| 4 | `@baton/lint` — engine + first 5 canonical BTN rules (001, 002, 003, 004, 060) | ✅ `73f5856` + `f3b1a63` (polish) |
+| 5 | `@baton/llm` — provider abstraction + cache | ✅ `583f9cc` + `4c484fd` (polish) |
+| 6 | `@baton/compiler` skeleton — pipeline + parsers + transcript parser | ✅ `3c12c61` + `9523238` (polish) |
+| 7 | `@baton/render` — generic + claude-code targets | ✅ `10b5d0f` (PR #1 squashed) |
+| 8 | `@baton/cli` — commander scaffold + 5 commands wired (week-1 demo gate) | ⏳ next |
 | 9 | Provenance + remark round-trip + selectively editable packet.md | ⏳ |
 | 10 | BTN010–BTN040 (repo-context, freshness, AC, provenance per canonical doc) | ⏳ |
 | 11 | LLM extraction prompts (objective, attempts, AC, next-action) + cost reporting | ⏳ |
