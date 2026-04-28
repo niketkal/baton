@@ -55,6 +55,13 @@ export type LintRuleResult = Array<{
  * package never imports `node:fs` directly — callers (engine,
  * compiler, CLI) inject a sandboxed implementation. When omitted, rules
  * that depend on it become no-ops.
+ *
+ * Sandboxing contract: the caller is responsible for ensuring the
+ * accessor cannot read outside the repo (e.g. by chrooting paths to
+ * `repo_context.root` or rejecting unexpected absolute paths). As a
+ * defense in depth, BTN012 also independently rejects obviously unsafe
+ * `context_item.ref` values (absolute paths, `..` traversal) before
+ * invoking `existsSync`.
  */
 export interface LintFsAccessor {
   existsSync(path: string): boolean;
@@ -64,9 +71,18 @@ export interface LintFsAccessor {
  * Read-only git ref resolver surfaced to rules that need to verify a
  * branch/commit resolves (BTN013). Same sandboxing rationale as
  * LintFsAccessor.
+ *
+ * Return values:
+ * - `'resolved'`   — the ref exists and resolves in the local repo.
+ * - `'unresolved'` — the ref does not exist (BTN013 should fire).
+ * - `'unavailable'` — the resolver cannot answer (e.g. the `git`
+ *   binary or repo cannot be queried). BTN013 silently skips findings
+ *   for that ref. Implementations should return this rather than
+ *   guessing. Callers that want explicit "not assessed" surfacing
+ *   should also omit `ctx.gitRefs` entirely.
  */
 export interface LintGitRefResolver {
-  resolves(ref: string): boolean;
+  resolves(ref: string): 'resolved' | 'unresolved' | 'unavailable';
 }
 
 /**

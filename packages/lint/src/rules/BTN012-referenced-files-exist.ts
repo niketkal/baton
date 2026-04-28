@@ -1,4 +1,4 @@
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, normalize, sep } from 'node:path';
 import type { LintRule } from '../types.js';
 
 /**
@@ -15,6 +15,13 @@ import type { LintRule } from '../types.js';
  * a string, relative refs are resolved against it; otherwise refs are
  * treated as already absolute or repo-root-relative paths the
  * accessor can resolve.
+ *
+ * Defense in depth: although the injected `LintFsAccessor` is expected
+ * to be sandboxed by its caller (Session 13), this rule independently
+ * rejects obviously unsafe refs before consulting the accessor. An
+ * absolute path or a normalized form containing `..` segments is
+ * reported as an error finding and the accessor is not invoked. This
+ * keeps BTN012's contract independent of the accessor's hardening.
  */
 const PATH_KINDS = new Set(['file', 'directory']);
 
@@ -37,11 +44,36 @@ export const BTN012: LintRule = {
       const item = raw as { kind?: unknown; ref?: unknown };
       if (typeof item.kind !== 'string' || !PATH_KINDS.has(item.kind)) return;
       if (typeof item.ref !== 'string' || item.ref.length === 0) return;
-      const candidate = isAbsolute(item.ref) ? item.ref : root ? join(root, item.ref) : item.ref;
+      const pointer = `/context_items/${idx}/ref`;
+
+      // Defense-in-depth sandboxing: reject absolute paths outright. The
+      // injector (Session 13) is the primary line of defense; this guard
+      // keeps the rule's contract self-contained.
+      if (isAbsolute(item.ref)) {
+        findings.push({
+          message: 'context_item.ref must be a repo-relative path; absolute paths are not allowed',
+          path: pointer,
+        });
+        return;
+      }
+      // Reject `..` traversal in the normalized form. We check both
+      // the platform-native separator and `/` so a forward-slash ref on
+      // Windows is still caught.
+      const normalized = normalize(item.ref);
+      const segments = normalized.split(sep).flatMap((s) => s.split('/'));
+      if (segments.includes('..')) {
+        findings.push({
+          message: 'context_item.ref must not traverse outside the repo',
+          path: pointer,
+        });
+        return;
+      }
+
+      const candidate = root ? join(root, item.ref) : item.ref;
       if (!ctx.fs?.existsSync(candidate)) {
         findings.push({
           message: `context_item[${idx}] references missing ${item.kind}: '${item.ref}'.`,
-          path: `/context_items/${idx}/ref`,
+          path: pointer,
         });
       }
     });

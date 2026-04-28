@@ -9,7 +9,11 @@ import type { LintRule } from '../types.js';
  * Implementation note: git access is brokered via `ctx.gitRefs`
  * (LintGitRefResolver) which the compiler/CLI inject in Session 13.
  * When `ctx.gitRefs` is absent the rule is a no-op so packet
- * authoring remains usable.
+ * authoring remains usable. The resolver returns one of `'resolved'`,
+ * `'unresolved'`, or `'unavailable'`; only `'unresolved'` produces a
+ * finding. `'unavailable'` (git binary missing, repo not queryable,
+ * etc.) silently skips so a missing toolchain cannot manufacture a
+ * spurious BTN013 error.
  */
 const REF_FIELDS = ['branch', 'commit', 'base_commit'] as const;
 
@@ -27,12 +31,14 @@ export const BTN013: LintRule = {
     for (const field of REF_FIELDS) {
       const value = repo[field];
       if (typeof value !== 'string' || value.length === 0) continue;
-      if (!ctx.gitRefs.resolves(value)) {
+      const status = ctx.gitRefs.resolves(value);
+      if (status === 'unresolved') {
         findings.push({
           message: `repo_context.${field}='${value}' does not resolve in the local repo.`,
           path: `/repo_context/${field}`,
         });
       }
+      // 'resolved' and 'unavailable' produce no finding.
     }
     return findings;
   },

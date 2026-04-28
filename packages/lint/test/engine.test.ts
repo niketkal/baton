@@ -171,19 +171,57 @@ describe('BTN012 with injected fs accessor', () => {
     const findings = BTN012.check(packet, { fs });
     expect(findings).toEqual([]);
   });
+
+  it('rejects an absolute context_item.ref without consulting the fs accessor', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad-absolute');
+    let consulted = false;
+    const fs = {
+      existsSync: (_p: string) => {
+        consulted = true;
+        return true;
+      },
+    };
+    const findings = BTN012.check(packet, { fs });
+    expect(consulted).toBe(false);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/absolute paths are not allowed/);
+    expect(findings[0]?.path).toBe('/context_items/0/ref');
+  });
+
+  it('rejects a `..`-traversal context_item.ref without consulting the fs accessor', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad-traversal');
+    let consulted = false;
+    const fs = {
+      existsSync: (_p: string) => {
+        consulted = true;
+        return true;
+      },
+    };
+    const findings = BTN012.check(packet, { fs });
+    expect(consulted).toBe(false);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/must not traverse outside the repo/);
+    expect(findings[0]?.path).toBe('/context_items/0/ref');
+  });
 });
 
 describe('BTN013 with injected git ref resolver', () => {
   it('good fixture: all refs resolve => no finding', () => {
     const packet = load('BTN013-git-refs-resolve', 'good');
-    const gitRefs = { resolves: () => true };
+    const gitRefs = { resolves: () => 'resolved' as const };
     const findings = BTN013.check(packet, { gitRefs });
     expect(findings).toHaveLength(0);
   });
 
   it('bad fixture: deleted branch does not resolve => error finding', () => {
     const packet = load('BTN013-git-refs-resolve', 'bad');
-    const gitRefs = { resolves: (ref: string) => ref !== 'deleted-branch' };
+    const gitRefs = {
+      resolves: (ref: string) =>
+        (ref === 'deleted-branch' ? 'unresolved' : 'resolved') as
+          | 'resolved'
+          | 'unresolved'
+          | 'unavailable',
+    };
     const findings = BTN013.check(packet, { gitRefs });
     expect(findings).toHaveLength(1);
     expect(findings[0]?.message).toMatch(/deleted-branch/);
@@ -193,6 +231,13 @@ describe('BTN013 with injected git ref resolver', () => {
   it('is a no-op when ctx.gitRefs is absent', () => {
     const packet = load('BTN013-git-refs-resolve', 'bad');
     const findings = BTN013.check(packet, {});
+    expect(findings).toEqual([]);
+  });
+
+  it('silently skips when the resolver reports git is unavailable', () => {
+    const packet = load('BTN013-git-refs-resolve', 'bad');
+    const gitRefs = { resolves: () => 'unavailable' as const };
+    const findings = BTN013.check(packet, { gitRefs });
     expect(findings).toEqual([]);
   });
 });
