@@ -60,7 +60,8 @@ export function sectionContextItems(items: ContextItem[], limit?: number): strin
   const rows = limit !== undefined ? sorted.slice(0, limit) : sorted;
   if (rows.length === 0) return '';
   const tableRows = rows.map(
-    (ci) => `| ${ci.priority} | ${ci.kind} | \`${escapeCell(ci.ref)}\` | ${escapeCell(ci.reason)} |`,
+    (ci) =>
+      `| ${ci.priority} | ${ci.kind} | \`${escapeCell(ci.ref)}\` | ${escapeCell(ci.reason)} |`,
   );
   return [
     '## Context',
