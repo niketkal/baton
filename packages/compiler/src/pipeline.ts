@@ -2,7 +2,8 @@ import { join } from 'node:path';
 import { validatePacket } from '@baton/schema';
 import { PacketStore } from '@baton/store';
 import { getPriorPacket } from './cache.js';
-import { type NormalizedInput, runFastMode, runFullMode } from './modes.js';
+import * as modes from './modes.js';
+import type { NormalizedInput } from './modes.js';
 import { PARSERS } from './parsers/index.js';
 import type { ParsedTranscript } from './parsers/types.js';
 import { attachRepo } from './repo.js';
@@ -28,6 +29,7 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
   checkAborted(opts.signal);
   const parsed: Array<{ ref: ArtifactRef; value: unknown }> = [];
   for (const ref of opts.artifacts) {
+    checkAborted(opts.signal);
     const parser = PARSERS[ref.type];
     if (parser === undefined) {
       warnings.push({
@@ -59,6 +61,7 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
   checkAborted(opts.signal);
   const input: NormalizedInput = {};
   for (const { ref, value } of parsed) {
+    checkAborted(opts.signal);
     if (ref.type === 'transcript') {
       const t = value as ParsedTranscript;
       input.transcript = t;
@@ -81,16 +84,26 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
 
   let prior: Packet | null = null;
   let store: PacketStore | null = null;
+  let storeReadFailed = false;
   try {
     if (persistEnabled) {
       store = PacketStore.open(storeRoot);
-      prior = await getPriorPacket(store, opts.packetId);
+      const priorResult = await getPriorPacket(store, opts.packetId);
+      prior = priorResult.packet;
+      if (priorResult.warning !== undefined) {
+        warnings.push(priorResult.warning);
+        storeReadFailed = true;
+      }
     }
 
     const now = new Date().toISOString();
     const ctx = { packetId: opts.packetId, repoCtx, now };
-    const packet =
-      opts.mode === 'full' ? runFullMode(input, prior, ctx) : runFastMode(input, prior, ctx);
+    const modeResult =
+      opts.mode === 'full'
+        ? modes.runFullMode(input, prior, ctx)
+        : modes.runFastMode(input, prior, ctx);
+    const packet = modeResult.packet;
+    warnings.push(...modeResult.warnings);
 
     // Step 4: validate.
     checkAborted(opts.signal);
@@ -101,13 +114,17 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
           code: 'SCHEMA_INVALID',
           severity: 'error',
           message: `${e.instancePath || '<root>'} ${e.message ?? 'failed validation'}`,
+          path: e.instancePath,
+          data: { keyword: e.keyword, params: e.params },
         });
       }
     }
 
-    // Step 5: persist.
+    // Step 5: persist. Skip when the store-read step failed: we can't
+    // tell whether the packet already exists on disk, and overwriting
+    // blindly risks compounding the corruption.
     checkAborted(opts.signal);
-    if (persistEnabled && store !== null && validation.valid) {
+    if (persistEnabled && store !== null && validation.valid && !storeReadFailed) {
       if (prior === null) {
         store.create(packet);
       } else {
@@ -118,6 +135,7 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
     return {
       packet,
       warnings,
+      valid: validation.valid,
       usedLLM: false,
       cacheHits: 0,
       cacheMisses: 0,

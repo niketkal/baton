@@ -11,6 +11,7 @@ import type {
 
 const HEADER_RE = /^##\s+(user|assistant|system|tool)\b\s*$/i;
 const TS_COMMENT_RE = /<!--\s*ts:\s*([^\s][^>]*?)\s*-->/i;
+const FENCE_RE = /^\s*```/;
 
 function uriToPath(uri: string, repoRoot: string | undefined): string {
   if (uri.startsWith('file://')) return fileURLToPath(uri);
@@ -28,22 +29,13 @@ function normalizeRole(s: string): TranscriptRole {
 
 export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
   const lines = content.split(/\r?\n/);
-  const looksRecognized = lines.some((l) => HEADER_RE.test(l));
   const rawLength = content.length;
-
-  if (!looksRecognized) {
-    return {
-      tool: 'claude-code',
-      messages: [{ role: 'assistant', text: content.trim() }],
-      rawLength,
-      unrecognized: true,
-    };
-  }
 
   const messages: TranscriptMessage[] = [];
   let currentRole: TranscriptRole | null = null;
   let currentTs: string | undefined;
   let buffer: string[] = [];
+  let inFence = false;
 
   const flush = (): void => {
     if (currentRole === null) return;
@@ -57,17 +49,27 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
   };
 
   for (const line of lines) {
-    const headerMatch = line.match(HEADER_RE);
-    if (headerMatch?.[1] !== undefined) {
-      flush();
-      currentRole = normalizeRole(headerMatch[1]);
+    // Track fence depth so we don't treat literal "## User" inside a
+    // ```-fenced code block as a real role header. The fence line itself
+    // is included in the surrounding message body.
+    if (FENCE_RE.test(line)) {
+      inFence = !inFence;
+      if (currentRole !== null) buffer.push(line);
       continue;
+    }
+    if (!inFence) {
+      const headerMatch = line.match(HEADER_RE);
+      if (headerMatch?.[1] !== undefined) {
+        flush();
+        currentRole = normalizeRole(headerMatch[1]);
+        continue;
+      }
     }
     if (currentRole === null) {
       // Pre-header preamble is dropped (front-matter, titles, etc.).
       continue;
     }
-    const tsMatch = line.match(TS_COMMENT_RE);
+    const tsMatch = inFence ? null : line.match(TS_COMMENT_RE);
     if (tsMatch?.[1] !== undefined && currentTs === undefined) {
       currentTs = tsMatch[1];
       const stripped = line.replace(TS_COMMENT_RE, '').trim();
@@ -77,6 +79,18 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
     buffer.push(line);
   }
   flush();
+
+  if (messages.length === 0) {
+    // No recognized role headers (or all of them were inside fenced
+    // code). Fall back to wrapping the whole file as a single assistant
+    // message and let the caller surface a warning.
+    return {
+      tool: 'claude-code',
+      messages: [{ role: 'assistant', text: content.trim() }],
+      rawLength,
+      unrecognized: true,
+    };
+  }
 
   return {
     tool: 'claude-code',

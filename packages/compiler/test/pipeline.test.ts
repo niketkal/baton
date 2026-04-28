@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { lint } from '@baton/lint';
 import { validatePacket } from '@baton/schema';
 import { PacketStore } from '@baton/store';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as modes from '../src/modes.js';
+import * as parsersIndex from '../src/parsers/index.js';
 import { compile } from '../src/pipeline.js';
 import type { ArtifactRef } from '../src/types.js';
 
@@ -19,6 +21,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -117,5 +120,128 @@ describe('compile (fast mode)', () => {
     ).rejects.toMatchObject({ name: 'AbortError' });
     // Store directory should not have been created.
     expect(existsSync(join(tmp, '.baton', 'state.db'))).toBe(false);
+  });
+
+  it('rejects with AbortError when the signal fires mid-pipeline', async () => {
+    const ctrl = new AbortController();
+    const transcriptParser = parsersIndex.PARSERS.transcript;
+    if (transcriptParser === undefined) throw new Error('transcript parser missing');
+    const original = transcriptParser.parse.bind(transcriptParser);
+    const spy = vi.spyOn(transcriptParser, 'parse').mockImplementation(async (uri, opts) => {
+      const result = await original(uri, opts);
+      ctrl.abort();
+      return result;
+    });
+    try {
+      await expect(
+        compile({
+          packetId: 'demo',
+          repoRoot: tmp,
+          mode: 'fast',
+          artifacts: [transcriptArtifact],
+          signal: ctrl.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('returns valid: true on a successful compile', async () => {
+    const result = await compile({
+      packetId: 'demo',
+      repoRoot: tmp,
+      mode: 'fast',
+      artifacts: [transcriptArtifact],
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns valid: false and skips persistence when the assembled packet fails schema validation', async () => {
+    const spy = vi.spyOn(modes, 'runFastMode').mockImplementation((_input, _prior, ctx) => ({
+      // Deliberately invalid: missing required fields like `objective`,
+      // `current_state`, `next_action`, `repo_context`, etc.
+      packet: {
+        schema_version: 'baton.packet/v1',
+        id: ctx.packetId,
+        // biome-ignore lint/suspicious/noExplicitAny: deliberately malformed packet for test
+      } as any,
+      warnings: [],
+    }));
+    try {
+      const result = await compile({
+        packetId: 'demo',
+        repoRoot: tmp,
+        mode: 'fast',
+        artifacts: [transcriptArtifact],
+      });
+      expect(result.valid).toBe(false);
+      expect(result.warnings.some((w) => w.code === 'SCHEMA_INVALID')).toBe(true);
+      // No packet directory should have been created on disk.
+      expect(existsSync(join(tmp, '.baton', 'packets', 'demo'))).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('surfaces COMPILE_STORE_READ_FAILED when the store throws on read', async () => {
+    // Seed a packet so getPriorPacket walks past has() into read().
+    await compile({
+      packetId: 'demo',
+      repoRoot: tmp,
+      mode: 'fast',
+      artifacts: [transcriptArtifact],
+    });
+    const spy = vi.spyOn(PacketStore.prototype, 'read').mockImplementation(() => {
+      throw new Error('simulated corrupt store');
+    });
+    try {
+      const result = await compile({
+        packetId: 'demo',
+        repoRoot: tmp,
+        mode: 'fast',
+        artifacts: [transcriptArtifact],
+      });
+      const codes = result.warnings.map((w) => w.code);
+      expect(codes).toContain('COMPILE_STORE_READ_FAILED');
+      // Compile still completes with a valid packet (built without prior).
+      expect(result.valid).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('emits COMPILE_PRIOR_SCHEMA_MISMATCH and discards prior on schema-version mismatch', async () => {
+    // Seed a real prior so store.has('demo') returns true; then spy on
+    // store.read to return a future-versioned (v2) packet that should
+    // trip the runFastMode mismatch guard.
+    const seed = await compile({
+      packetId: 'demo',
+      repoRoot: tmp,
+      mode: 'fast',
+      artifacts: [transcriptArtifact],
+    });
+    const v2Prior = {
+      ...seed.packet,
+      objective: 'Stale-v2 narrative that must NOT be reused.',
+      // biome-ignore lint/suspicious/noExplicitAny: deliberate future version for test
+      schema_version: 'baton.packet/v2' as any,
+    };
+    const spy = vi.spyOn(PacketStore.prototype, 'read').mockReturnValue(v2Prior);
+    try {
+      const result = await compile({
+        packetId: 'demo',
+        repoRoot: tmp,
+        mode: 'fast',
+        artifacts: [transcriptArtifact],
+      });
+      const codes = result.warnings.map((w) => w.code);
+      expect(codes).toContain('COMPILE_PRIOR_SCHEMA_MISMATCH');
+      expect(result.packet.objective).not.toBe('Stale-v2 narrative that must NOT be reused.');
+      expect(result.packet.schema_version).toBe('baton.packet/v1');
+      expect(result.valid).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

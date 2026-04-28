@@ -1,6 +1,7 @@
+import { SCHEMA_VERSION } from '@baton/schema';
 import type { ParsedTranscript } from './parsers/types.js';
 import type { RepoContext } from './repo.js';
-import type { Packet } from './types.js';
+import type { CompileWarning, Packet } from './types.js';
 
 /**
  * Aggregated, normalized view of all parsed source artifacts. Only the
@@ -24,11 +25,30 @@ export interface ModeContext {
  * extraction survives subsequent fast-mode rebuilds), and otherwise
  * derive cheap stand-ins from the transcript.
  */
+export interface ModeResult {
+  packet: Packet;
+  warnings: CompileWarning[];
+}
+
 export function runFastMode(
   input: NormalizedInput,
-  prior: Packet | null,
+  priorIn: Packet | null,
   ctx: ModeContext,
-): Packet {
+): ModeResult {
+  const warnings: CompileWarning[] = [];
+  let prior: Packet | null = priorIn;
+  if (prior !== null && prior.schema_version !== SCHEMA_VERSION) {
+    warnings.push({
+      code: 'COMPILE_PRIOR_SCHEMA_MISMATCH',
+      severity: 'warning',
+      message: `Prior packet has schema_version='${prior.schema_version}', current is '${SCHEMA_VERSION}'. Discarding prior narrative; rebuilding from scratch.`,
+      data: {
+        prior_schema_version: prior.schema_version,
+        current_schema_version: SCHEMA_VERSION,
+      },
+    });
+    prior = null;
+  }
   const transcript = input.transcript;
   const firstUser = transcript?.messages.find((m) => m.role === 'user');
   const firstAssistant = transcript?.messages.find((m) => m.role === 'assistant');
@@ -78,8 +98,8 @@ export function runFastMode(
 
   const createdAt = prior?.created_at ?? ctx.now;
 
-  return {
-    schema_version: 'baton.packet/v1',
+  const packet: Packet = {
+    schema_version: SCHEMA_VERSION,
     id: ctx.packetId,
     title,
     status: prior?.status ?? 'draft',
@@ -101,13 +121,14 @@ export function runFastMode(
     created_at: createdAt,
     updated_at: ctx.now,
   };
+  return { packet, warnings };
 }
 
 export function runFullMode(
   _input: NormalizedInput,
   _prior: Packet | null,
   _ctx: ModeContext,
-): Packet {
+): ModeResult {
   throw new Error('full mode not implemented until Session 11');
 }
 

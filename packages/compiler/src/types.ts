@@ -52,11 +52,24 @@ export interface CompileWarning {
   code: string;
   message: string;
   severity: 'info' | 'warning' | 'error';
+  /**
+   * Optional structured fields for parity with `@baton/lint`'s
+   * `LintFinding`. Lets a future `baton compile --json` surface
+   * compiler warnings in the same shape as lint findings.
+   */
+  path?: string;
+  data?: Record<string, unknown>;
 }
 
 export interface CompileResult {
   packet: Packet;
   warnings: CompileWarning[];
+  /**
+   * `true` iff the validate step produced zero schema errors. Renderers
+   * and dispatchers should refuse to consume a result with `valid: false`
+   * rather than scanning `warnings` for `code === 'SCHEMA_INVALID'`.
+   */
+  valid: boolean;
   usedLLM: boolean;
   cacheHits: number;
   cacheMisses: number;

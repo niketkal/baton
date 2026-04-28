@@ -29,6 +29,19 @@ describe('parseClaudeCodeTranscript', () => {
     expect(parsed.messages[0]?.text.length).toBeGreaterThan(0);
   });
 
+  it('does not treat role headers inside fenced code blocks as messages', async () => {
+    const parsed = await transcriptParser.parse(join(FIXTURES, 'transcript-with-fenced-header.md'));
+    expect(parsed.unrecognized).toBe(false);
+    const userMessages = parsed.messages.filter((m) => m.role === 'user');
+    const assistantMessages = parsed.messages.filter((m) => m.role === 'assistant');
+    expect(userMessages).toHaveLength(1);
+    expect(assistantMessages).toHaveLength(1);
+    // The literal "## Assistant" / "## User" inside fences should appear
+    // as content of the surrounding user message, not as their own messages.
+    expect(userMessages[0]?.text).toContain('## Assistant');
+    expect(userMessages[0]?.text).toContain('## User');
+  });
+
   it('honors AbortSignal raised before parse completes', async () => {
     const ctrl = new AbortController();
     ctrl.abort();
