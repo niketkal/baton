@@ -27,38 +27,83 @@ function normalizeRole(s: string): TranscriptRole {
   return 'assistant';
 }
 
+interface LineInfo {
+  text: string;
+  /** Byte offset (inclusive) of this line's first character. */
+  start: number;
+  /** Byte offset (exclusive) of the line's last character (excludes line terminator). */
+  end: number;
+}
+
+function splitLinesWithOffsets(content: string): LineInfo[] {
+  const out: LineInfo[] = [];
+  const n = content.length;
+  let i = 0;
+  while (i <= n) {
+    const start = i;
+    let j = i;
+    while (j < n && content[j] !== '\n' && content[j] !== '\r') j += 1;
+    out.push({ text: content.slice(start, j), start, end: j });
+    if (j >= n) break;
+    if (content[j] === '\r' && content[j + 1] === '\n') i = j + 2;
+    else i = j + 1;
+  }
+  return out;
+}
+
 export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
-  const lines = content.split(/\r?\n/);
+  const lines = splitLinesWithOffsets(content);
   const rawLength = content.length;
 
   const messages: TranscriptMessage[] = [];
   let currentRole: TranscriptRole | null = null;
   let currentTs: string | undefined;
   let buffer: string[] = [];
+  let bodyStart: number | null = null;
+  let bodyEnd: number | null = null;
   let inFence = false;
 
   const flush = (): void => {
     if (currentRole === null) return;
     const text = buffer.join('\n').trim();
-    if (text.length === 0 && currentTs === undefined) return;
+    if (text.length === 0 && currentTs === undefined) {
+      buffer = [];
+      bodyStart = null;
+      bodyEnd = null;
+      return;
+    }
     const msg: TranscriptMessage = { role: currentRole, text };
     if (currentTs !== undefined) msg.ts = currentTs;
+    if (bodyStart !== null && bodyEnd !== null) {
+      msg.span_start = bodyStart;
+      msg.span_end = bodyEnd;
+    }
     messages.push(msg);
     buffer = [];
+    bodyStart = null;
+    bodyEnd = null;
     currentTs = undefined;
+  };
+
+  const recordOffsets = (line: LineInfo): void => {
+    if (bodyStart === null) bodyStart = line.start;
+    bodyEnd = line.end;
   };
 
   for (const line of lines) {
     // Track fence depth so we don't treat literal "## User" inside a
     // ```-fenced code block as a real role header. The fence line itself
     // is included in the surrounding message body.
-    if (FENCE_RE.test(line)) {
+    if (FENCE_RE.test(line.text)) {
       inFence = !inFence;
-      if (currentRole !== null) buffer.push(line);
+      if (currentRole !== null) {
+        buffer.push(line.text);
+        recordOffsets(line);
+      }
       continue;
     }
     if (!inFence) {
-      const headerMatch = line.match(HEADER_RE);
+      const headerMatch = line.text.match(HEADER_RE);
       if (headerMatch?.[1] !== undefined) {
         flush();
         currentRole = normalizeRole(headerMatch[1]);
@@ -69,14 +114,18 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
       // Pre-header preamble is dropped (front-matter, titles, etc.).
       continue;
     }
-    const tsMatch = inFence ? null : line.match(TS_COMMENT_RE);
+    const tsMatch = inFence ? null : line.text.match(TS_COMMENT_RE);
     if (tsMatch?.[1] !== undefined && currentTs === undefined) {
       currentTs = tsMatch[1];
-      const stripped = line.replace(TS_COMMENT_RE, '').trim();
-      if (stripped.length > 0) buffer.push(stripped);
+      const stripped = line.text.replace(TS_COMMENT_RE, '').trim();
+      if (stripped.length > 0) {
+        buffer.push(stripped);
+        recordOffsets(line);
+      }
       continue;
     }
-    buffer.push(line);
+    buffer.push(line.text);
+    recordOffsets(line);
   }
   flush();
 
@@ -86,8 +135,16 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
     // message and let the caller surface a warning.
     return {
       tool: 'claude-code',
-      messages: [{ role: 'assistant', text: content.trim() }],
+      messages: [
+        {
+          role: 'assistant',
+          text: content.trim(),
+          span_start: 0,
+          span_end: rawLength,
+        },
+      ],
       rawLength,
+      rawText: content,
       unrecognized: true,
     };
   }
@@ -96,6 +153,7 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
     tool: 'claude-code',
     messages,
     rawLength,
+    rawText: content,
     unrecognized: false,
   };
 }

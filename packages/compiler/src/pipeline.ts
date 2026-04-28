@@ -6,6 +6,7 @@ import * as modes from './modes.js';
 import type { NormalizedInput } from './modes.js';
 import { PARSERS } from './parsers/index.js';
 import type { ParsedTranscript } from './parsers/types.js';
+import { attachProvenanceLinks } from './provenance.js';
 import { attachRepo } from './repo.js';
 import type {
   ArtifactRef,
@@ -102,8 +103,14 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
       opts.mode === 'full'
         ? modes.runFullMode(input, prior, ctx)
         : modes.runFastMode(input, prior, ctx);
-    const packet = modeResult.packet;
+    const assembled = modeResult.packet;
     warnings.push(...modeResult.warnings);
+
+    // Step 3.5: attach provenance links + source artifacts. Runs after
+    // assemble so it sees the final narrative fields the mode chose,
+    // and before validate so any provenance-shaped schema violation
+    // surfaces alongside the rest.
+    const packet: Packet = attachProvenanceLinks(assembled, input);
 
     // Step 4: validate.
     checkAborted(opts.signal);

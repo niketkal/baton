@@ -15,3 +15,10 @@ export {
   type TranscriptMessage,
   type TranscriptRole,
 } from './parsers/index.js';
+export { attachProvenanceLinks } from './provenance.js';
+export {
+  computeSpan,
+  unionSpans,
+  type ByteSpan,
+  type NodeWithPosition,
+} from './extract/ast-spans.js';

@@ -181,6 +181,15 @@ importers:
       better-sqlite3:
         specifier: 12.9.0
         version: 12.9.0
+      remark-parse:
+        specifier: 11.0.0
+        version: 11.0.0
+      remark-stringify:
+        specifier: 11.0.0
+        version: 11.0.0
+      unified:
+        specifier: 11.0.5
+        version: 11.0.5
     devDependencies:
       '@types/better-sqlite3':
         specifier: 7.6.12

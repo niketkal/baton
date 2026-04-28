@@ -42,6 +42,26 @@ describe('parseClaudeCodeTranscript', () => {
     expect(userMessages[0]?.text).toContain('## User');
   });
 
+  it('computes byte offset spans for each message body', async () => {
+    const parsed = await transcriptParser.parse(join(FIXTURES, 'transcript-claude-code-01.md'));
+    expect(parsed.rawText).toBeDefined();
+    const raw = parsed.rawText ?? '';
+    expect(raw.length).toBe(parsed.rawLength);
+    for (const m of parsed.messages) {
+      expect(typeof m.span_start).toBe('number');
+      expect(typeof m.span_end).toBe('number');
+      expect(m.span_start ?? -1).toBeGreaterThanOrEqual(0);
+      expect(m.span_end ?? -1).toBeGreaterThan(m.span_start ?? 0);
+      expect(m.span_end ?? -1).toBeLessThanOrEqual(parsed.rawLength);
+      // The byte slice should contain at least the first word of the
+      // trimmed message text — span_start/span_end keep line terminators
+      // and the leading newline, so the slice is a superset of m.text.
+      const slice = raw.slice(m.span_start ?? 0, m.span_end ?? 0);
+      const firstWord = m.text.split(/\s+/)[0] ?? '';
+      if (firstWord.length > 0) expect(slice).toContain(firstWord);
+    }
+  });
+
   it('honors AbortSignal raised before parse completes', async () => {
     const ctrl = new AbortController();
     ctrl.abort();
