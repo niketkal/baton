@@ -107,6 +107,11 @@ describe('render — claude-code target', () => {
     expect(result.markdown).toContain('test/auth-flow.spec.ts');
   });
 
+  it('wraps context items in <context priority="..."> tags', () => {
+    const result = render(FIXTURE, 'claude-code');
+    expect(result.markdown).toContain('<context priority=');
+  });
+
   it('includes open questions text', () => {
     const result = render(FIXTURE, 'claude-code');
     expect(result.markdown).toContain("Should the fix land on");
