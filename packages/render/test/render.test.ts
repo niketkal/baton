@@ -8,6 +8,7 @@ import { render } from '../src/index.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const req = createRequire(import.meta.url);
 const FIXTURE = req('./fixtures/packet-fixture-01.json') as unknown as BatonPacket;
+const MINIMAL = req('./fixtures/packet-fixture-minimal.json') as unknown as BatonPacket;
 
 describe('render — generic target', () => {
   it('returns a non-empty markdown string', () => {
@@ -136,11 +137,152 @@ describe('render — claude-code target', () => {
   });
 });
 
+describe('render — codex target', () => {
+  it('returns a non-empty markdown string', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.markdown.length).toBeGreaterThan(0);
+  });
+
+  it('sets target to "codex"', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.target).toBe('codex');
+  });
+
+  it('populates tokenEstimate with a positive number', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.tokenEstimate).toBeGreaterThan(0);
+  });
+
+  it('leads with TASK: line', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.markdown.startsWith('TASK:')).toBe(true);
+  });
+
+  it('includes FILES: section', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.markdown).toContain('FILES:');
+    expect(result.markdown).toContain('test/auth-flow.spec.ts');
+  });
+
+  it('includes NEXT ACTION: line with the next action text', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.markdown).toContain('NEXT ACTION:');
+    expect(result.markdown).toContain(FIXTURE.next_action);
+  });
+
+  it('uses no XML tags', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.markdown).not.toContain('<context');
+  });
+
+  it('uses no markdown headers', () => {
+    const result = render(FIXTURE, 'codex');
+    expect(result.markdown).not.toMatch(/^#/m);
+  });
+
+  it('matches the stored snapshot', async () => {
+    const result = render(FIXTURE, 'codex');
+    await expect(result.markdown).toMatchFileSnapshot(
+      join(__dirname, 'snapshots', 'codex-fixture-01.md.snap'),
+    );
+  });
+});
+
+describe('render — cursor target', () => {
+  it('returns a non-empty markdown string', () => {
+    const result = render(FIXTURE, 'cursor');
+    expect(result.markdown.length).toBeGreaterThan(0);
+  });
+
+  it('sets target to "cursor"', () => {
+    const result = render(FIXTURE, 'cursor');
+    expect(result.target).toBe('cursor');
+  });
+
+  it('populates tokenEstimate with a positive number', () => {
+    const result = render(FIXTURE, 'cursor');
+    expect(result.tokenEstimate).toBeGreaterThan(0);
+  });
+
+  it('leads with ## Files section', () => {
+    const result = render(FIXTURE, 'cursor');
+    expect(result.markdown.startsWith('## Files')).toBe(true);
+  });
+
+  it('includes ## Goal section with the objective', () => {
+    const result = render(FIXTURE, 'cursor');
+    expect(result.markdown).toContain('## Goal');
+    expect(result.markdown).toContain(FIXTURE.objective);
+  });
+
+  it('includes ## Do this next section with the next action', () => {
+    const result = render(FIXTURE, 'cursor');
+    expect(result.markdown).toContain('## Do this next');
+    expect(result.markdown).toContain(FIXTURE.next_action);
+  });
+
+  it('matches the stored snapshot', async () => {
+    const result = render(FIXTURE, 'cursor');
+    await expect(result.markdown).toMatchFileSnapshot(
+      join(__dirname, 'snapshots', 'cursor-fixture-01.md.snap'),
+    );
+  });
+});
+
+describe('render — minimal fixture (empty optional arrays)', () => {
+  it('minimal fixture is schema-valid', async () => {
+    const { validatePacket } = await import('@baton/schema');
+    const result = validatePacket(MINIMAL);
+    expect(result.valid).toBe(true);
+  });
+
+  for (const target of ['generic', 'claude-code', 'codex', 'cursor'] as const) {
+    it(`${target}: renders without crashing and includes objective`, () => {
+      const result = render(MINIMAL, target);
+      expect(result.markdown.length).toBeGreaterThan(0);
+      expect(result.markdown).toContain(MINIMAL.objective);
+    });
+
+    it(`${target}: suppresses empty-array sections`, () => {
+      const result = render(MINIMAL, target);
+      // Empty arrays must NOT produce empty headed sections.
+      expect(result.markdown).not.toMatch(/##\s*Acceptance Criteria/i);
+      expect(result.markdown).not.toMatch(/ACCEPTANCE CRITERIA:/);
+      expect(result.markdown).not.toMatch(/##\s*Constraints/i);
+      expect(result.markdown).not.toMatch(/CONSTRAINTS:/);
+      expect(result.markdown).not.toMatch(/##\s*Open Questions/i);
+      expect(result.markdown).not.toMatch(/OPEN QUESTIONS:/);
+      // Detached repo: no Repo: line / ## Repo section
+      expect(result.markdown).not.toMatch(/^##\s*Repo$/m);
+      expect(result.markdown).not.toMatch(/^Repo:/m);
+    });
+
+    it(`${target}: truncated is false with no context items`, () => {
+      const result = render(MINIMAL, target, { contextBudget: 1 });
+      expect(result.truncated).toBe(false);
+    });
+  }
+});
+
 describe('render — unknown target', () => {
   it('throws for an unregistered target', () => {
     expect(() =>
       // biome-ignore lint/suspicious/noExplicitAny: testing runtime guard
       render(FIXTURE, 'unknown-target' as any),
     ).toThrow(/unknown render target/i);
+  });
+
+  it('error message names the supported targets', () => {
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: testing runtime guard
+      render(FIXTURE, 'unknown-target' as any);
+      throw new Error('expected render to throw');
+    } catch (err) {
+      const msg = (err as Error).message;
+      expect(msg).toContain('generic');
+      expect(msg).toContain('claude-code');
+      expect(msg).toContain('codex');
+      expect(msg).toContain('cursor');
+    }
   });
 });

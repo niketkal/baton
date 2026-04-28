@@ -1,3 +1,4 @@
+import { roughEstimate } from '@baton/llm';
 import type {
   AcceptanceCriterion,
   Attempt,
@@ -7,6 +8,7 @@ import type {
   ProvenanceLink,
   RepoContext,
 } from '@baton/schema';
+import type { RenderOptions } from '../types.js';
 
 function escapeCell(s: string): string {
   return s.replace(/\|/g, '\\|');
@@ -91,6 +93,34 @@ export function sectionRepo(repo: RepoContext): string {
   const commit = repo.commit ? `\`${repo.commit.slice(0, 8)}\`` : 'unknown';
   const state = repo.dirty ? 'Dirty' : 'Clean';
   return `## Repo\n\nBranch: ${branch} · Base: ${base} · Commit: ${commit} · ${state}`;
+}
+
+/**
+ * Shared budget resolver used by every render target. Each target supplies a
+ * `formatItem` callback that mirrors how it serialises a single context row,
+ * so the per-item token estimate matches the target's actual output shape.
+ *
+ * Returns `limit: undefined` when no budget is in effect (callers should pass
+ * all items through). When a budget exists, returns the maximum number of
+ * items that fit alongside the rendered preamble.
+ */
+export function resolveContextLimit(
+  items: readonly ContextItem[],
+  options: RenderOptions | undefined,
+  preamble: string,
+  formatItem: (item: ContextItem) => string,
+  packetBudget?: number,
+): { limit: number | undefined; truncated: boolean } {
+  const budget = options?.contextBudget ?? packetBudget ?? undefined;
+  if (budget === undefined) return { limit: undefined, truncated: false };
+  const preambleTokens = roughEstimate(preamble);
+  const remaining = budget - preambleTokens;
+  if (remaining <= 0) return { limit: 0, truncated: items.length > 0 };
+  const sorted = [...items].sort((a, b) => a.priority - b.priority);
+  const representative = sorted[0];
+  const perItem = representative ? roughEstimate(formatItem(representative)) : 20;
+  const limit = Math.max(0, Math.floor(remaining / perItem));
+  return { limit, truncated: limit < items.length };
 }
 
 export function sectionProvenance(links: ProvenanceLink[]): string {

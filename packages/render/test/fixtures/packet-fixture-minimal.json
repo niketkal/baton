@@ -1,0 +1,32 @@
+{
+  "schema_version": "baton.packet/v1",
+  "id": "render-fixture-minimal",
+  "title": "Minimal packet",
+  "status": "draft",
+  "validation_level": "draft",
+  "task_type": "generic",
+  "objective": "Do the thing.",
+  "current_state": "Nothing yet.",
+  "next_action": "Start.",
+  "open_questions": [],
+  "confidence_score": 0.5,
+  "repo_context": {
+    "attached": false,
+    "root": null,
+    "vcs": "none",
+    "branch": null,
+    "base_branch": null,
+    "commit": null,
+    "base_commit": null,
+    "dirty": false
+  },
+  "context_items": [],
+  "constraints": [],
+  "attempts": [],
+  "acceptance_criteria": [],
+  "warnings": [],
+  "provenance_links": [],
+  "source_artifacts": [],
+  "created_at": "2026-04-26T10:00:00Z",
+  "updated_at": "2026-04-26T10:00:00Z"
+}

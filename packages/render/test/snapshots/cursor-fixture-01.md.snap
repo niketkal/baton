@@ -1,0 +1,16 @@
+## Files
+
+- `test/auth-flow.spec.ts` — Flaky test under investigation
+- `fixtures/auth.ts` — Contains lazy initialisation with the race condition at line 42
+
+## Goal
+
+Identify and fix the race condition in auth-flow.spec.ts that causes it to fail on CI one run in three.
+
+## Do this next
+
+Add a memoisation wrapper around the auth fixture loader and add a regression test using --repeat-each=10.
+
+## Constraints
+
+- (error) No changes to public auth API surface during the fix.

@@ -1,6 +1,7 @@
 import { roughEstimate } from '@baton/llm';
 import type { BatonPacket, ContextItem } from '@baton/schema';
 import {
+  resolveContextLimit,
   sectionAcceptanceCriteria,
   sectionAttempts,
   sectionConstraints,
@@ -24,28 +25,6 @@ function renderContextBlocks(items: ContextItem[], limit?: number): string {
   return `## Context Files\n\n${blocks.join('\n\n')}`;
 }
 
-function resolveContextLimit(
-  packet: BatonPacket,
-  options: RenderOptions | undefined,
-  preamble: string,
-): { limit: number | undefined; truncated: boolean } {
-  const budget = options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
-  if (budget === undefined) return { limit: undefined, truncated: false };
-  const preambleTokens = roughEstimate(preamble);
-  const remaining = budget - preambleTokens;
-  if (remaining <= 0) return { limit: 0, truncated: packet.context_items.length > 0 };
-  // Sample the first priority-sorted item to estimate per-item cost in the XML block format.
-  const sorted = [...packet.context_items].sort((a, b) => a.priority - b.priority);
-  const representative = sorted[0];
-  const perItem = representative
-    ? roughEstimate(
-        `<context priority="${representative.priority}">\n**${representative.ref}** (${representative.kind}) — ${representative.reason}\n</context>`,
-      )
-    : 20;
-  const limit = Math.max(0, Math.floor(remaining / perItem));
-  return { limit, truncated: limit < packet.context_items.length };
-}
-
 function buildMarkdown(
   packet: BatonPacket,
   options: RenderOptions | undefined,
@@ -60,7 +39,14 @@ function buildMarkdown(
     sectionCurrentState(packet.current_state),
   ].join('\n');
 
-  const { limit, truncated } = resolveContextLimit(packet, options, preamble);
+  const { limit, truncated } = resolveContextLimit(
+    packet.context_items,
+    options,
+    preamble,
+    (item) =>
+      `<context priority="${item.priority}">\n**${item.ref}** (${item.kind}) — ${item.reason}\n</context>`,
+    packet.render_hints?.context_budget,
+  );
 
   const acSection = sectionAcceptanceCriteria(packet.acceptance_criteria);
   const oqSection = sectionOpenQuestions(packet.open_questions);
