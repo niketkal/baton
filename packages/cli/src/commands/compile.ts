@@ -1,12 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { compile } from '@baton/compiler';
 import type { ArtifactRef, ArtifactType, CompileMode } from '@baton/compiler';
 import type { Command } from 'commander';
-import { renderHumanResult } from '../output/human.js';
-import { renderJsonResult } from '../output/json.js';
-import { getLogger } from '../output/logger.js';
-import { redactForLog } from '../output/redact.js';
 
 export interface CompileCommandOptions {
   packet: string;
@@ -72,6 +67,7 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
     return 1;
   }
 
+  const { compile } = await import('@baton/compiler');
   const artifacts = collectArtifacts(repoRoot, opts.packet);
   const result = await compile({
     packetId: opts.packet,
@@ -80,6 +76,8 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
     artifacts,
   });
 
+  const { renderHumanResult, renderHumanWarnings } = await import('../output/human.js');
+  const { renderJsonResult } = await import('../output/json.js');
   if (opts.json === true) {
     process.stdout.write(
       renderJsonResult({
@@ -97,8 +95,24 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
         summary: `${result.warnings.length} warning(s) · ${result.durationMs}ms`,
       }),
     );
+    // Fix 3: surface each warning's code+message to stderr so humans
+    // get something actionable. JSON mode already includes the
+    // structured array.
+    if (result.warnings.length > 0) {
+      process.stderr.write(
+        renderHumanWarnings(
+          result.warnings.map((w) => ({
+            code: w.code,
+            message: w.message,
+            path: w.path,
+          })),
+        ),
+      );
+    }
   }
 
+  const { getLogger } = await import('../output/logger.js');
+  const { redactForLog } = await import('../output/redact.js');
   const { logger } = getLogger(repoRoot);
   logger.info(
     redactForLog({

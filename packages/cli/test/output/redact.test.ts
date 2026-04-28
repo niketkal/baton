@@ -1,15 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { redactForLog } from '../../src/output/redact.js';
 
-const ORIGINAL_LEVEL = process.env.BATON_LOG_LEVEL;
-
 describe('redactForLog', () => {
+  // Save and restore the env var around each case. Previous version
+  // assigned `undefined`, which Node coerces to the literal string
+  // "undefined" — that leaked into other tests that read the var.
+  let originalLogLevel: string | undefined;
   beforeEach(() => {
-    process.env.BATON_LOG_LEVEL = undefined;
+    originalLogLevel = process.env.BATON_LOG_LEVEL;
+    // biome-ignore lint/performance/noDelete: env vars must be unset (assigning undefined coerces to "undefined")
+    delete process.env.BATON_LOG_LEVEL;
   });
   afterEach(() => {
-    if (ORIGINAL_LEVEL === undefined) process.env.BATON_LOG_LEVEL = undefined;
-    else process.env.BATON_LOG_LEVEL = ORIGINAL_LEVEL;
+    // biome-ignore lint/performance/noDelete: env vars must be unset
+    if (originalLogLevel === undefined) delete process.env.BATON_LOG_LEVEL;
+    else process.env.BATON_LOG_LEVEL = originalLogLevel;
   });
 
   it('passes typed metadata through unchanged', () => {

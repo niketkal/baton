@@ -1,12 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { render } from '@baton/render';
 import type { RenderTarget } from '@baton/render';
-import { PacketStore } from '@baton/store';
 import type { Command } from 'commander';
-import { renderJsonResult } from '../output/json.js';
-import { getLogger } from '../output/logger.js';
-import { redactForLog } from '../output/redact.js';
 
 const SUPPORTED_TARGETS: RenderTarget[] = ['generic', 'claude-code', 'codex', 'cursor'];
 
@@ -31,6 +26,10 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
     return 1;
   }
 
+  // Lazy: PacketStore drags better-sqlite3 (native binding); render
+  // pulls @baton/render. Keep them off the cold-start path.
+  const { render } = await import('@baton/render');
+  const { PacketStore } = await import('@baton/store');
   const store = PacketStore.open(join(repoRoot, '.baton'));
   let result: ReturnType<typeof render>;
   try {
@@ -50,6 +49,7 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
     await clipboardy.write(result.markdown);
     process.stdout.write('copied to clipboard\n');
   } else if (opts.json === true) {
+    const { renderJsonResult } = await import('../output/json.js');
     process.stdout.write(
       renderJsonResult({
         target: result.target,
@@ -63,6 +63,8 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
     if (!result.markdown.endsWith('\n')) process.stdout.write('\n');
   }
 
+  const { getLogger } = await import('../output/logger.js');
+  const { redactForLog } = await import('../output/redact.js');
   const { logger } = getLogger(repoRoot);
   logger.info(
     redactForLog({

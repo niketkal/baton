@@ -1,11 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, mkdirSync, readFileSync, readSync, writeFileSync } from 'node:fs';
-import { basename, extname, isAbsolute, join, resolve } from 'node:path';
 import type { Command } from 'commander';
-import { renderHumanResult } from '../output/human.js';
-import { renderJsonResult } from '../output/json.js';
-import { getLogger } from '../output/logger.js';
-import { redactForLog } from '../output/redact.js';
 
 export type IngestKind = 'transcript' | 'log' | 'diff' | 'issue' | 'note' | 'image' | 'test-report';
 
@@ -32,19 +25,53 @@ export interface IngestResult {
   packet?: string;
 }
 
-function readStdinSync(): { bytes: Buffer; suggestedName: string } {
-  const chunks: Buffer[] = [];
-  const buf = Buffer.alloc(64 * 1024);
-  try {
-    while (true) {
-      const n = readSync(0, buf, 0, buf.length, null);
-      if (n === 0) break;
-      chunks.push(Buffer.from(buf.subarray(0, n)));
-    }
-  } catch {
-    // EAGAIN or closed: stop reading.
-  }
-  return { bytes: Buffer.concat(chunks), suggestedName: 'stdin.txt' };
+/**
+ * Stream stdin to `dest` while computing a sha256 digest in flight.
+ * Avoids materializing the entire artifact in memory — important for
+ * large transcripts (a 100MB log used to allocate 100MB before this).
+ */
+async function streamStdinTo(dest: string): Promise<{ digest: string; bytes: number }> {
+  const { createWriteStream } = await import('node:fs');
+  const { pipeline } = await import('node:stream/promises');
+  const { Transform } = await import('node:stream');
+  const { createHash } = await import('node:crypto');
+  const hash = createHash('sha256');
+  let bytes = 0;
+  const tap = new Transform({
+    transform(chunk: Buffer, _enc, cb) {
+      hash.update(chunk);
+      bytes += chunk.length;
+      cb(null, chunk);
+    },
+  });
+  await pipeline(process.stdin, tap, createWriteStream(dest));
+  return { digest: hash.digest('hex'), bytes };
+}
+
+/**
+ * Stream a file on disk through a sha256 hash. We can't reuse `copyFileSync`
+ * + read-back because we want a single pass. `pipeline(read, hash-tap, write)`
+ * mirrors the stdin path.
+ */
+async function streamFileTo(
+  source: string,
+  dest: string,
+): Promise<{ digest: string; bytes: number }> {
+  const { createReadStream, createWriteStream } = await import('node:fs');
+  const { pipeline } = await import('node:stream/promises');
+  const { Transform } = await import('node:stream');
+  const { createHash } = await import('node:crypto');
+  const hash = createHash('sha256');
+  let bytes = 0;
+  const tap = new Transform({
+    transform(chunk: Buffer, _enc, cb) {
+      hash.update(chunk);
+      bytes += chunk.length;
+      cb(null, chunk);
+    },
+  });
+  await pipeline(createReadStream(source), tap, createWriteStream(dest));
+  return { digest: hash.digest('hex'), bytes };
 }
 
 export async function runIngest(
@@ -52,6 +79,9 @@ export async function runIngest(
   source: string,
   opts: IngestOptions,
 ): Promise<number> {
+  const { randomUUID } = await import('node:crypto');
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  const { basename, extname, isAbsolute, join, resolve } = await import('node:path');
   const start = Date.now();
   const repoRoot = opts.repo ?? process.cwd();
 
@@ -67,25 +97,26 @@ export async function runIngest(
   mkdirSync(artifactsDir, { recursive: true });
 
   let storedName: string;
-  let bytes: Buffer;
+  let digest: string;
+  let bytes: number;
   if (source === '-') {
-    const read = readStdinSync();
-    bytes = read.bytes;
-    storedName = read.suggestedName;
-    writeFileSync(join(artifactsDir, storedName), bytes);
+    storedName = 'stdin.txt';
+    const out = await streamStdinTo(join(artifactsDir, storedName));
+    digest = out.digest;
+    bytes = out.bytes;
   } else {
     const path = isAbsolute(source) ? source : resolve(source);
-    bytes = readFileSync(path);
     storedName = basename(path);
-    copyFileSync(path, join(artifactsDir, storedName));
+    const out = await streamFileTo(path, join(artifactsDir, storedName));
+    digest = out.digest;
+    bytes = out.bytes;
   }
 
-  const digest = createHash('sha256').update(bytes).digest('hex');
   const meta = {
     id: artifactId,
     kind,
     file: storedName,
-    bytes: bytes.length,
+    bytes,
     digest_sha256: digest,
     extension: extname(storedName).slice(1),
     packet: opts.packet ?? null,
@@ -100,6 +131,8 @@ export async function runIngest(
     ...(opts.packet !== undefined ? { packet: opts.packet } : {}),
   };
 
+  const { renderHumanResult } = await import('../output/human.js');
+  const { renderJsonResult } = await import('../output/json.js');
   if (opts.json === true) {
     process.stdout.write(renderJsonResult(result));
   } else {
@@ -113,6 +146,8 @@ export async function runIngest(
     );
   }
 
+  const { getLogger } = await import('../output/logger.js');
+  const { redactForLog } = await import('../output/redact.js');
   const { logger } = getLogger(repoRoot);
   logger.info(
     redactForLog({
@@ -122,7 +157,7 @@ export async function runIngest(
       duration_ms: Date.now() - start,
       artifact_id: artifactId,
       artifact_type: kind,
-      size_bytes: bytes.length,
+      size_bytes: bytes,
       digest,
       ...(opts.packet !== undefined ? { packet_id: opts.packet } : {}),
     }),

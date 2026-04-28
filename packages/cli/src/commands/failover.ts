@@ -1,14 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { compile } from '@baton/compiler';
-import { lint } from '@baton/lint';
-import { render } from '@baton/render';
 import type { RenderTarget } from '@baton/render';
 import type { Command } from 'commander';
-import { renderHumanResult } from '../output/human.js';
-import { getLogger } from '../output/logger.js';
-import { redactForLog } from '../output/redact.js';
-import { collectArtifacts } from './compile.js';
 
 const RENDER_TARGETS: RenderTarget[] = ['generic', 'claude-code', 'codex', 'cursor'];
 
@@ -61,6 +54,14 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
     return 1;
   }
 
+  const { compile } = await import('@baton/compiler');
+  const { lint } = await import('@baton/lint');
+  const { render } = await import('@baton/render');
+  const { collectArtifacts } = await import('./compile.js');
+  const { renderHumanResult, renderHumanWarnings } = await import('../output/human.js');
+  const { getLogger } = await import('../output/logger.js');
+  const { redactForLog } = await import('../output/redact.js');
+
   const artifacts = collectArtifacts(repoRoot, packetId);
   const compileResult = await compile({
     packetId,
@@ -72,10 +73,22 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
   // Non-strict lint: only block on real errors, not warnings.
   const lintReport = lint(compileResult.packet, { repoRoot }, { strict: false });
   const blockingLint = lintReport.errors.length > 0;
-  if (blockingLint && !compileResult.valid) {
-    process.stderr.write(
-      `failover stopped: packet ${packetId} has ${lintReport.errors.length} blocking issue(s)\n`,
-    );
+
+  // Fix 1 (BLOCKER): block on EITHER lint errors OR schema invalid.
+  // Previous condition (`&&`) let lint-erroring packets through whenever
+  // the schema validated, silently shipping a bad BATON.md. The CLI
+  // contract failover semantics require a hard stop on either gate.
+  if (blockingLint || !compileResult.valid) {
+    const reason =
+      blockingLint && !compileResult.valid
+        ? 'lint errors and schema invalid'
+        : blockingLint
+          ? 'lint errors'
+          : 'schema invalid';
+    const counts: string[] = [];
+    if (blockingLint) counts.push(`${lintReport.errors.length} lint error(s)`);
+    if (!compileResult.valid) counts.push('schema invalid');
+    process.stderr.write(`failover stopped: ${reason} — ${counts.join(', ')}\n`);
     const { logger } = getLogger(repoRoot);
     logger.warn(
       redactForLog({
@@ -85,7 +98,11 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
         duration_ms: Date.now() - start,
         packet_id: packetId,
         target,
-        shape: { lint_errors: lintReport.errors.length },
+        meta: { reason },
+        shape: {
+          lint_errors: lintReport.errors.length,
+          schema_invalid: compileResult.valid ? 0 : 1,
+        },
       }),
       'command complete',
     );
@@ -93,6 +110,21 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
   }
 
   const rendered = render(compileResult.packet, target);
+
+  // Fix 3: surface each compile + lint warning to stderr (human mode).
+  // Previously the user only saw a count.
+  const allWarnings = [
+    ...compileResult.warnings.map((w) => ({
+      code: w.code,
+      message: w.message,
+      path: w.path,
+    })),
+    ...lintReport.warnings.map((w) => ({
+      code: w.code,
+      message: w.message,
+      path: w.path,
+    })),
+  ];
 
   if (opts.out !== undefined) {
     const outPath = isAbsolute(opts.out) ? opts.out : resolve(repoRoot, opts.out);
@@ -109,6 +141,7 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
         ],
       }),
     );
+    if (allWarnings.length > 0) process.stderr.write(renderHumanWarnings(allWarnings));
   } else if (opts.copy === true) {
     const { default: clipboardy } = await import('clipboardy');
     await clipboardy.write(rendered.markdown);
@@ -120,9 +153,11 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
         details: [`${lintReport.summary.warningCount} warning(s)`],
       }),
     );
+    if (allWarnings.length > 0) process.stderr.write(renderHumanWarnings(allWarnings));
   } else {
     process.stdout.write(rendered.markdown);
     if (!rendered.markdown.endsWith('\n')) process.stdout.write('\n');
+    if (allWarnings.length > 0) process.stderr.write(renderHumanWarnings(allWarnings));
   }
 
   const { logger } = getLogger(repoRoot);

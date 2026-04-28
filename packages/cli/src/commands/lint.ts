@@ -1,11 +1,5 @@
 import { join } from 'node:path';
-import { lint } from '@baton/lint';
-import { PacketStore } from '@baton/store';
 import type { Command } from 'commander';
-import { renderHumanResult } from '../output/human.js';
-import { renderJsonResult } from '../output/json.js';
-import { getLogger } from '../output/logger.js';
-import { redactForLog } from '../output/redact.js';
 
 export interface LintCommandOptions {
   packet: string;
@@ -17,6 +11,10 @@ export interface LintCommandOptions {
 export async function runLint(opts: LintCommandOptions): Promise<number> {
   const start = Date.now();
   const repoRoot = opts.repo ?? process.cwd();
+  // Lazy-load: PacketStore drags better-sqlite3, lint is its own
+  // chunk. Both off the cold-start path.
+  const { lint } = await import('@baton/lint');
+  const { PacketStore } = await import('@baton/store');
   const store = PacketStore.open(join(repoRoot, '.baton'));
   let report: ReturnType<typeof lint>;
   try {
@@ -26,6 +24,8 @@ export async function runLint(opts: LintCommandOptions): Promise<number> {
     store.close();
   }
 
+  const { renderHumanResult } = await import('../output/human.js');
+  const { renderJsonResult } = await import('../output/json.js');
   if (opts.json === true) {
     process.stdout.write(renderJsonResult(report));
   } else {
@@ -39,6 +39,8 @@ export async function runLint(opts: LintCommandOptions): Promise<number> {
   }
 
   const exitCode = report.status === 'passed' ? 0 : 2;
+  const { getLogger } = await import('../output/logger.js');
+  const { redactForLog } = await import('../output/redact.js');
   const { logger } = getLogger(repoRoot);
   logger.info(
     redactForLog({

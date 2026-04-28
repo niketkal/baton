@@ -1,8 +1,11 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Command } from 'commander';
-import { getLogger } from '../output/logger.js';
-import { redactForLog } from '../output/redact.js';
+
+export interface InitOptions {
+  repo?: string;
+  dryRun?: boolean;
+}
 
 const DEFAULT_CONFIG_TOML = `# Baton local configuration
 # See: docs/spec/cli-contract.md
@@ -11,11 +14,6 @@ const DEFAULT_CONFIG_TOML = `# Baton local configuration
 # provider = "anthropic"   # uncomment + set to enable LLM-driven compile --full
 # model    = "claude-3-5-sonnet-latest"
 `;
-
-export interface InitOptions {
-  repo?: string;
-  dryRun?: boolean;
-}
 
 export async function runInit(opts: InitOptions): Promise<number> {
   const start = Date.now();
@@ -41,6 +39,8 @@ export async function runInit(opts: InitOptions): Promise<number> {
   process.stdout.write(`Initialized Baton in ${batonDir}\n`);
   process.stderr.write('no integrations to install yet — see Session 14 for hook installation\n');
 
+  const { getLogger } = await import('../output/logger.js');
+  const { redactForLog } = await import('../output/redact.js');
   const { logger } = getLogger(repoRoot);
   logger.info(
     redactForLog({

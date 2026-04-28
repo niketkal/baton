@@ -48,3 +48,27 @@ export function renderHumanResult(data: HumanResult): string {
 export function colorize(code: keyof typeof ANSI, text: string): string {
   return paint(code, text);
 }
+
+export interface WarningLine {
+  code: string;
+  message: string;
+  path?: string | undefined;
+}
+
+/**
+ * Render a list of warnings as `[warn] CODE: message (path)` lines.
+ * Returns "" when warnings is empty so callers can write unconditionally.
+ *
+ * Targeted at stderr in human mode — JSON mode already includes the
+ * structured warnings array.
+ */
+export function renderHumanWarnings(warnings: WarningLine[]): string {
+  if (warnings.length === 0) return '';
+  const tag = paint('yellow', '[warn]');
+  const lines: string[] = [];
+  for (const w of warnings) {
+    const suffix = w.path !== undefined && w.path !== '' ? ` (${w.path})` : '';
+    lines.push(`${tag} ${w.code}: ${w.message}${suffix}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
