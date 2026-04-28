@@ -1,0 +1,106 @@
+{
+  "schema_version": "baton.packet/v1",
+  "id": "render-fixture-01",
+  "title": "Fix flaky auth test",
+  "status": "ready_for_export",
+  "validation_level": "valid",
+  "task_type": "debugging",
+  "objective": "Identify and fix the race condition in auth-flow.spec.ts that causes it to fail on CI one run in three.",
+  "current_state": "Reproduced failure on iteration 4 of 10. Root cause is unsynchronised lazy initialisation in fixtures/auth.ts:42.",
+  "next_action": "Add a memoisation wrapper around the auth fixture loader and add a regression test using --repeat-each=10.",
+  "open_questions": [
+    {
+      "id": "oq-1",
+      "text": "Should the fix land on `main` or the release branch?",
+      "blocking": false,
+      "status": "open"
+    }
+  ],
+  "confidence_score": 0.85,
+  "repo_context": {
+    "attached": true,
+    "root": "/projects/myapp",
+    "vcs": "git",
+    "branch": "fix/flaky-auth",
+    "base_branch": "main",
+    "commit": "abc1234",
+    "base_commit": "def5678",
+    "dirty": false
+  },
+  "context_items": [
+    {
+      "kind": "file",
+      "ref": "test/auth-flow.spec.ts",
+      "reason": "Flaky test under investigation",
+      "priority": 1,
+      "freshness_score": 1.0,
+      "exists": true,
+      "provenance_refs": []
+    },
+    {
+      "kind": "file",
+      "ref": "fixtures/auth.ts",
+      "reason": "Contains lazy initialisation with the race condition at line 42",
+      "priority": 2,
+      "freshness_score": 0.9,
+      "exists": true,
+      "provenance_refs": []
+    }
+  ],
+  "constraints": [
+    {
+      "id": "con-1",
+      "type": "policy",
+      "text": "No changes to public auth API surface during the fix.",
+      "severity": "error",
+      "source": "user",
+      "provenance_refs": ["src-1"]
+    }
+  ],
+  "attempts": [
+    {
+      "id": "att-1",
+      "tool": "claude-code",
+      "summary": "Reproduced the failure using --repeat-each=10. Traced to unsynchronised lazy init in fixtures/auth.ts:42.",
+      "result": "partial",
+      "failure_reason": null,
+      "artifact_refs": [],
+      "created_at": "2026-04-26T10:05:00Z"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "ac-1",
+      "text": "auth-flow.spec.ts passes 10/10 with --repeat-each=10 on CI",
+      "status": "unmet",
+      "required": true,
+      "source": "user",
+      "provenance_refs": []
+    }
+  ],
+  "warnings": [],
+  "provenance_links": [
+    {
+      "id": "prov-1",
+      "field_name": "current_state",
+      "artifact_id": "src-1",
+      "source_type": "transcript",
+      "ref": "transcript-claude-code-01.md",
+      "span_start": 100,
+      "span_end": 200,
+      "excerpt": "Reproduced on iteration 4 of 10."
+    }
+  ],
+  "source_artifacts": [
+    {
+      "id": "src-1",
+      "type": "transcript",
+      "source_tool": "claude-code",
+      "uri": "transcript-claude-code-01.md",
+      "digest": "sha256:abc123def456",
+      "created_at": "2026-04-26T10:00:00Z"
+    }
+  ],
+  "created_at": "2026-04-26T10:00:00Z",
+  "updated_at": "2026-04-26T10:05:00Z"
+}
