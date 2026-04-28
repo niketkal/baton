@@ -1,6 +1,7 @@
 import { roughEstimate } from '@baton/llm';
 import type { BatonPacket } from '@baton/schema';
 import {
+  resolveContextLimit,
   sectionAcceptanceCriteria,
   sectionAttempts,
   sectionConstraints,
@@ -13,27 +14,6 @@ import {
   sectionRepo,
 } from '../templates/sections.js';
 import type { RenderOptions, RenderResult, Renderer } from '../types.js';
-
-function resolveContextLimit(
-  packet: BatonPacket,
-  options: RenderOptions | undefined,
-  preamble: string,
-): { limit: number | undefined; truncated: boolean } {
-  const budget = options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
-  if (budget === undefined) return { limit: undefined, truncated: false };
-  const preambleTokens = roughEstimate(preamble);
-  const remaining = budget - preambleTokens;
-  if (remaining <= 0) return { limit: 0, truncated: packet.context_items.length > 0 };
-  const firstItem = packet.context_items[0];
-  const perItemTokens = firstItem
-    ? roughEstimate(`| 1 | ${firstItem.kind} | ${firstItem.ref} | ${firstItem.reason} |`)
-    : 20;
-  const limit = Math.max(0, Math.floor(remaining / perItemTokens));
-  return {
-    limit,
-    truncated: limit < packet.context_items.length,
-  };
-}
 
 function buildMarkdown(
   packet: BatonPacket,
@@ -56,7 +36,13 @@ function buildMarkdown(
     sectionNextAction(packet.next_action),
   ].join('\n');
 
-  const { limit, truncated } = resolveContextLimit(packet, options, preamble);
+  const { limit, truncated } = resolveContextLimit(
+    packet.context_items,
+    options,
+    preamble,
+    (item) => `| 1 | ${item.kind} | ${item.ref} | ${item.reason} |`,
+    packet.render_hints?.context_budget,
+  );
   const contextSection = sectionContextItems(packet.context_items, limit);
   const acSection = sectionAcceptanceCriteria(packet.acceptance_criteria);
   const oqSection = sectionOpenQuestions(packet.open_questions);

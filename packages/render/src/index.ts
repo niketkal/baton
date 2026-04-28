@@ -3,9 +3,12 @@ import { claudeCodeRenderer } from './targets/claude-code.js';
 import { codexRenderer } from './targets/codex.js';
 import { cursorRenderer } from './targets/cursor.js';
 import { genericRenderer } from './targets/generic.js';
-import type { RenderOptions, RenderResult, RenderTarget } from './types.js';
+import type { RenderOptions, RenderResult, RenderTarget, Renderer } from './types.js';
 
-const renderers = new Map([
+// Typing the Map as `Map<RenderTarget, Renderer>` makes TS reject any entry
+// whose key is not in the `RenderTarget` union — registry-key typos become
+// compile errors instead of runtime "unknown target" exceptions.
+const renderers: Map<RenderTarget, Renderer> = new Map<RenderTarget, Renderer>([
   ['generic', genericRenderer],
   ['claude-code', claudeCodeRenderer],
   ['codex', codexRenderer],
@@ -19,7 +22,7 @@ export function render(
 ): RenderResult {
   const renderer = renderers.get(target);
   if (!renderer) {
-    const supported = [...renderers.keys()].join(', ');
+    const supported = [...renderers.keys()].sort().join(', ');
     throw new Error(`unknown render target: ${target} (supported: ${supported})`);
   }
   return renderer.render(packet, options);

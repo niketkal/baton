@@ -1,5 +1,6 @@
 import { roughEstimate } from '@baton/llm';
 import type { BatonPacket, ContextItem } from '@baton/schema';
+import { resolveContextLimit } from '../templates/sections.js';
 import type { RenderOptions, RenderResult, Renderer } from '../types.js';
 
 function renderFiles(items: ContextItem[], limit?: number): string {
@@ -17,25 +18,6 @@ function renderConstraints(packet: BatonPacket): string {
   return `## Constraints\n\n${lines.join('\n')}`;
 }
 
-function resolveContextLimit(
-  packet: BatonPacket,
-  options: RenderOptions | undefined,
-  preamble: string,
-): { limit: number | undefined; truncated: boolean } {
-  const budget = options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
-  if (budget === undefined) return { limit: undefined, truncated: false };
-  const preambleTokens = roughEstimate(preamble);
-  const remaining = budget - preambleTokens;
-  if (remaining <= 0) return { limit: 0, truncated: packet.context_items.length > 0 };
-  const sorted = [...packet.context_items].sort((a, b) => a.priority - b.priority);
-  const representative = sorted[0];
-  const perItem = representative
-    ? roughEstimate(`- \`${representative.ref}\` — ${representative.reason}`)
-    : 20;
-  const limit = Math.max(0, Math.floor(remaining / perItem));
-  return { limit, truncated: limit < packet.context_items.length };
-}
-
 function buildMarkdown(
   packet: BatonPacket,
   options: RenderOptions | undefined,
@@ -47,15 +29,22 @@ function buildMarkdown(
     .filter(Boolean)
     .join('\n\n');
 
-  const { limit, truncated } = resolveContextLimit(packet, options, preamble);
+  const { limit, truncated } = resolveContextLimit(
+    packet.context_items,
+    options,
+    preamble,
+    (item) => `- \`${item.ref}\` — ${item.reason}`,
+    packet.render_hints?.context_budget,
+  );
   const filesSection = renderFiles(packet.context_items, limit);
   const conSection = renderConstraints(packet);
 
-  const truncatedNote = truncated ? '\n\n> _Files list truncated to fit token budget._' : '';
-
+  // Note: when truncated, `renderFiles` returns an in-section "_(omitted to
+  // fit token budget)_" or partial-list message. That's contextual enough on
+  // its own — no trailing global note needed.
   const parts = [filesSection, goalSection, nextSection, conSection].filter(Boolean);
 
-  return { markdown: parts.join('\n\n') + truncatedNote, truncated };
+  return { markdown: parts.join('\n\n'), truncated };
 }
 
 export const cursorRenderer: Renderer = {

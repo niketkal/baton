@@ -1,5 +1,6 @@
 import { roughEstimate } from '@baton/llm';
 import type { BatonPacket, ContextItem } from '@baton/schema';
+import { resolveContextLimit } from '../templates/sections.js';
 import type { RenderOptions, RenderResult, Renderer } from '../types.js';
 
 function renderFiles(items: ContextItem[], limit?: number): string {
@@ -17,11 +18,17 @@ function renderContextSection(packet: BatonPacket): string {
   lines.push(`Current state: ${packet.current_state}`);
   if (packet.repo_context.attached) {
     const r = packet.repo_context;
-    const branch = r.branch ?? 'unknown';
-    const base = r.base_branch ?? 'unknown';
-    const commit = r.commit ? r.commit.slice(0, 8) : 'unknown';
-    const dirty = r.dirty ? 'dirty' : 'clean';
-    lines.push(`Repo: branch=${branch} base=${base} commit=${commit} (${dirty})`);
+    // Mirror sectionRepo's behavior: when `attached: true` but every repo
+    // identifier is missing, omit the Repo: line entirely rather than emit
+    // `branch=unknown base=unknown commit=unknown`.
+    const hasAny = r.branch != null || r.base_branch != null || r.commit != null;
+    if (hasAny) {
+      const branch = r.branch ?? 'unknown';
+      const base = r.base_branch ?? 'unknown';
+      const commit = r.commit ? r.commit.slice(0, 8) : 'unknown';
+      const dirty = r.dirty ? 'dirty' : 'clean';
+      lines.push(`Repo: branch=${branch} base=${base} commit=${commit} (${dirty})`);
+    }
   }
   return `CONTEXT:\n${lines.join('\n')}`;
 }
@@ -52,37 +59,22 @@ function renderOpenQuestions(packet: BatonPacket): string {
   return `OPEN QUESTIONS:\n${lines.join('\n')}`;
 }
 
-function resolveContextLimit(
-  packet: BatonPacket,
-  options: RenderOptions | undefined,
-  preamble: string,
-): { limit: number | undefined; truncated: boolean } {
-  const budget = options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
-  if (budget === undefined) return { limit: undefined, truncated: false };
-  const preambleTokens = roughEstimate(preamble);
-  const remaining = budget - preambleTokens;
-  if (remaining <= 0) return { limit: 0, truncated: packet.context_items.length > 0 };
-  const sorted = [...packet.context_items].sort((a, b) => a.priority - b.priority);
-  const representative = sorted[0];
-  const perItem = representative
-    ? roughEstimate(
-        `  - ${representative.ref} (${representative.kind}, p${representative.priority}) — ${representative.reason}`,
-      )
-    : 20;
-  const limit = Math.max(0, Math.floor(remaining / perItem));
-  return { limit, truncated: limit < packet.context_items.length };
-}
-
 function buildMarkdown(
   packet: BatonPacket,
   options: RenderOptions | undefined,
 ): { markdown: string; truncated: boolean } {
   const head = `TASK: ${packet.title}`;
-  const preamble = [head, '', renderContextSection(packet)].join('\n');
-  const { limit, truncated } = resolveContextLimit(packet, options, preamble);
+  const contextSection = renderContextSection(packet);
+  const preamble = [head, '', contextSection].join('\n');
+  const { limit, truncated } = resolveContextLimit(
+    packet.context_items,
+    options,
+    preamble,
+    (item) => `  - ${item.ref} (${item.kind}, p${item.priority}) — ${item.reason}`,
+    packet.render_hints?.context_budget,
+  );
 
   const filesSection = renderFiles(packet.context_items, limit);
-  const ctxSection = renderContextSection(packet);
   const acSection = renderAcceptance(packet);
   const conSection = renderConstraints(packet);
   const oqSection = renderOpenQuestions(packet);
@@ -93,7 +85,7 @@ function buildMarkdown(
   const parts = [
     head,
     filesSection,
-    ctxSection,
+    contextSection,
     acSection,
     conSection,
     oqSection,
