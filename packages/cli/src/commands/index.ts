@@ -15,9 +15,11 @@ import { registerInit } from './init.js';
 import { registerLint } from './lint.js';
 import { registerMigrate } from './migrate.js';
 import { registerRender } from './render.js';
+import { registerUninstall } from './uninstall.js';
 
 export function registerCommands(program: Command): void {
   registerInit(program);
+  registerUninstall(program);
   registerIngest(program);
   registerCompile(program);
   registerRender(program);
@@ -27,6 +29,7 @@ export function registerCommands(program: Command): void {
 }
 
 export { runInit } from './init.js';
+export { runUninstall } from './uninstall.js';
 export { runIngest } from './ingest.js';
 export { runCompile, collectArtifacts } from './compile.js';
 export { runRender } from './render.js';
