@@ -5,6 +5,9 @@ import * as schemaModule from '@baton/schema';
 import { describe, expect, it, vi } from 'vitest';
 import { lint } from '../src/engine.js';
 import { BTN002 } from '../src/rules/BTN002-packet-schema-valid.js';
+import { BTN012 } from '../src/rules/BTN012-referenced-files-exist.js';
+import { BTN013 } from '../src/rules/BTN013-git-refs-resolve.js';
+import { BTN014 } from '../src/rules/BTN014-packet-not-stale.js';
 import { ALL_RULES } from '../src/rules/index.js';
 import { detectSecrets } from '../src/secrets/detect.js';
 import type { LintRule, Packet } from '../src/types.js';
@@ -20,9 +23,15 @@ function load(rule: string, kind: 'good' | 'bad'): Packet {
 interface Case {
   rule: string;
   folder: string;
-  expectedSeverity: 'critical' | 'error';
+  expectedSeverity: 'critical' | 'error' | 'warning';
 }
 
+/**
+ * Standard fixture-based cases. Each rule's `bad` fixture must surface a
+ * finding from that rule via `lint(packet)` (no special ctx). Rules that
+ * require an injected accessor (BTN012/013/014) are exercised via the
+ * dedicated suites further down rather than this generic table.
+ */
 const CASES: Case[] = [
   { rule: 'BTN001', folder: 'BTN001-schema-version-supported', expectedSeverity: 'critical' },
   { rule: 'BTN002', folder: 'BTN002-packet-schema-valid', expectedSeverity: 'critical' },
@@ -33,6 +42,46 @@ const CASES: Case[] = [
   },
   { rule: 'BTN004', folder: 'BTN004-confidence-score-bounded', expectedSeverity: 'error' },
   {
+    rule: 'BTN010',
+    folder: 'BTN010-repo-context-required-for-code-tasks',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN011',
+    folder: 'BTN011-context-items-required-for-code-tasks',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN020',
+    folder: 'BTN020-acceptance-criteria-required-for-execution',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN021',
+    folder: 'BTN021-open-blocking-questions-gate-readiness',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN030',
+    folder: 'BTN030-constraints-require-provenance',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN031',
+    folder: 'BTN031-attempt-failures-require-evidence',
+    expectedSeverity: 'warning',
+  },
+  {
+    rule: 'BTN032',
+    folder: 'BTN032-acceptance-criteria-require-provenance',
+    expectedSeverity: 'warning',
+  },
+  {
+    rule: 'BTN033',
+    folder: 'BTN033-context-items-require-provenance',
+    expectedSeverity: 'warning',
+  },
+  {
     rule: 'BTN060',
     folder: 'BTN060-no-apparent-secrets-in-artifacts',
     expectedSeverity: 'critical',
@@ -40,12 +89,23 @@ const CASES: Case[] = [
 ];
 
 describe('lint engine — registry', () => {
-  it('registers exactly the 5 expected rules in order', () => {
+  it('registers exactly the expected rules in canonical order', () => {
     expect(ALL_RULES.map((r) => r.code)).toEqual([
       'BTN001',
       'BTN002',
       'BTN003',
       'BTN004',
+      'BTN010',
+      'BTN011',
+      'BTN012',
+      'BTN013',
+      'BTN014',
+      'BTN020',
+      'BTN021',
+      'BTN030',
+      'BTN031',
+      'BTN032',
+      'BTN033',
       'BTN060',
     ]);
   });
@@ -68,7 +128,154 @@ describe.each(CASES)('rule $rule', ({ rule, folder, expectedSeverity }) => {
     for (const hit of hits) {
       expect(hit.severity).toBe(expectedSeverity);
     }
-    expect(report.status).toBe('failed');
+    // For warning-severity rules we don't assert report.status since
+    // those don't fail by default; for error/critical rules the report
+    // must be failed.
+    if (expectedSeverity !== 'warning') {
+      expect(report.status).toBe('failed');
+    }
+  });
+});
+
+describe('BTN012 with injected fs accessor', () => {
+  it('good fixture: all referenced files exist => no finding', () => {
+    const packet = load('BTN012-referenced-files-exist', 'good');
+    const fs = {
+      existsSync: (_p: string) => true,
+    };
+    const findings = BTN012.check(packet, { fs });
+    expect(findings).toHaveLength(0);
+  });
+
+  it('bad fixture: missing referenced file => error finding', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad');
+    const fs = {
+      existsSync: (p: string) => !p.includes('missing'),
+    };
+    const findings = BTN012.check(packet, { fs });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/missing\.ts/);
+    expect(findings[0]?.path).toBe('/context_items/0/ref');
+  });
+
+  it('is a no-op when ctx.fs is absent', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad');
+    const findings = BTN012.check(packet, {});
+    expect(findings).toEqual([]);
+  });
+
+  it('skips when repo_context.attached is false', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad');
+    (packet.repo_context as { attached: boolean }).attached = false;
+    const fs = { existsSync: () => false };
+    const findings = BTN012.check(packet, { fs });
+    expect(findings).toEqual([]);
+  });
+
+  it('rejects an absolute context_item.ref without consulting the fs accessor', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad-absolute');
+    let consulted = false;
+    const fs = {
+      existsSync: (_p: string) => {
+        consulted = true;
+        return true;
+      },
+    };
+    const findings = BTN012.check(packet, { fs });
+    expect(consulted).toBe(false);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/absolute paths are not allowed/);
+    expect(findings[0]?.path).toBe('/context_items/0/ref');
+  });
+
+  it('rejects a `..`-traversal context_item.ref without consulting the fs accessor', () => {
+    const packet = load('BTN012-referenced-files-exist', 'bad-traversal');
+    let consulted = false;
+    const fs = {
+      existsSync: (_p: string) => {
+        consulted = true;
+        return true;
+      },
+    };
+    const findings = BTN012.check(packet, { fs });
+    expect(consulted).toBe(false);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/must not traverse outside the repo/);
+    expect(findings[0]?.path).toBe('/context_items/0/ref');
+  });
+});
+
+describe('BTN013 with injected git ref resolver', () => {
+  it('good fixture: all refs resolve => no finding', () => {
+    const packet = load('BTN013-git-refs-resolve', 'good');
+    const gitRefs = { resolves: () => 'resolved' as const };
+    const findings = BTN013.check(packet, { gitRefs });
+    expect(findings).toHaveLength(0);
+  });
+
+  it('bad fixture: deleted branch does not resolve => error finding', () => {
+    const packet = load('BTN013-git-refs-resolve', 'bad');
+    const gitRefs = {
+      resolves: (ref: string) =>
+        (ref === 'deleted-branch' ? 'unresolved' : 'resolved') as
+          | 'resolved'
+          | 'unresolved'
+          | 'unavailable',
+    };
+    const findings = BTN013.check(packet, { gitRefs });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/deleted-branch/);
+    expect(findings[0]?.path).toBe('/repo_context/branch');
+  });
+
+  it('is a no-op when ctx.gitRefs is absent', () => {
+    const packet = load('BTN013-git-refs-resolve', 'bad');
+    const findings = BTN013.check(packet, {});
+    expect(findings).toEqual([]);
+  });
+
+  it('silently skips when the resolver reports git is unavailable', () => {
+    const packet = load('BTN013-git-refs-resolve', 'bad');
+    const gitRefs = { resolves: () => 'unavailable' as const };
+    const findings = BTN013.check(packet, { gitRefs });
+    expect(findings).toEqual([]);
+  });
+});
+
+describe('BTN014 with injected freshness signal', () => {
+  it('good fixture: freshness.stale=false => no finding', () => {
+    const packet = load('BTN014-packet-not-stale', 'good');
+    const findings = BTN014.check(packet, { freshness: { stale: false } });
+    expect(findings).toHaveLength(0);
+  });
+
+  it('bad fixture: freshness.stale=true => critical finding', () => {
+    const packet = load('BTN014-packet-not-stale', 'bad');
+    const findings = BTN014.check(packet, {
+      freshness: { stale: true, reason: 'referenced files changed since compile' },
+    });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/stale/i);
+    expect(findings[0]?.message).toMatch(/referenced files changed/);
+  });
+
+  it('is a no-op when ctx.freshness is absent', () => {
+    const packet = load('BTN014-packet-not-stale', 'bad');
+    const findings = BTN014.check(packet, {});
+    expect(findings).toEqual([]);
+  });
+});
+
+describe('BTN031 strict mode promotion', () => {
+  it('warning by default, promoted to error in strict mode', () => {
+    const packet = load('BTN031-attempt-failures-require-evidence', 'bad');
+
+    const lenient = lint(packet);
+    expect(lenient.warnings.map((f) => f.code)).toContain('BTN031');
+    expect(lenient.errors.map((f) => f.code)).not.toContain('BTN031');
+
+    const strict = lint(packet, {}, { strict: true });
+    expect(strict.errors.map((f) => f.code)).toContain('BTN031');
   });
 });
 
