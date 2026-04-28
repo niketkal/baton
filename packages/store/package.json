@@ -20,7 +20,10 @@
   },
   "dependencies": {
     "@baton/schema": "workspace:*",
-    "better-sqlite3": "12.9.0"
+    "better-sqlite3": "12.9.0",
+    "remark-parse": "11.0.0",
+    "remark-stringify": "11.0.0",
+    "unified": "11.0.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "7.6.12"

@@ -12,4 +12,14 @@ export {
   type StorePaths,
   resolvePaths,
 } from './paths.js';
-export { renderPacketMarkdown } from './markdown.js';
+export {
+  renderPacketMarkdown,
+  serializePacketToMarkdown,
+  parseMarkdownToPacket,
+  stripReadonlyBlocks,
+  extractReadonlyBlocks,
+  READONLY_OPEN,
+  READONLY_CLOSE,
+  type ParseResult,
+} from './markdown.js';
+export { assertNoReadonlyEdits, ReadonlyTamperError } from './markdown-readonly.js';

@@ -48,6 +48,11 @@ describe('compile (fast mode)', () => {
     const blockingErrors = report.errors;
     expect(blockingErrors).toHaveLength(0);
     expect(report.status).toBe('passed');
+
+    // Session 9: the assemble step must attach at least one provenance
+    // link so the next session's lint/render passes have something to
+    // anchor against.
+    expect(result.packet.provenance_links.length).toBeGreaterThan(0);
   });
 
   it('persists the packet to the store and the rebuild reads identical content', async () => {
