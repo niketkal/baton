@@ -8,6 +8,10 @@ import type {
   RepoContext,
 } from '@baton/schema';
 
+function escapeCell(s: string): string {
+  return s.replace(/\|/g, '\\|');
+}
+
 export function sectionObjective(objective: string): string {
   return `## Objective\n\n${objective}`;
 }
@@ -54,8 +58,9 @@ export function sectionContextItems(items: ContextItem[], limit?: number): strin
   if (items.length === 0) return '';
   const sorted = [...items].sort((a, b) => a.priority - b.priority);
   const rows = limit !== undefined ? sorted.slice(0, limit) : sorted;
+  if (rows.length === 0) return '';
   const tableRows = rows.map(
-    (ci) => `| ${ci.priority} | ${ci.kind} | \`${ci.ref}\` | ${ci.reason} |`,
+    (ci) => `| ${ci.priority} | ${ci.kind} | \`${escapeCell(ci.ref)}\` | ${escapeCell(ci.reason)} |`,
   );
   return [
     '## Context',
@@ -91,7 +96,7 @@ export function sectionProvenance(links: ProvenanceLink[]): string {
   if (links.length === 0) return '';
   const rows = links.map(
     (l) =>
-      `| \`${l.field_name}\` | ${l.source_type} | \`${l.ref}\` | ${l.excerpt ?? ''} |`,
+      `| \`${escapeCell(l.field_name)}\` | ${l.source_type} | \`${escapeCell(l.ref)}\` | ${escapeCell(l.excerpt ?? '')} |`,
   );
   return [
     '## Provenance',
