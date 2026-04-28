@@ -48,7 +48,20 @@ export async function runMigrate(opts: MigrateCommandOptions): Promise<number> {
     return 1;
   }
 
-  const raw = readFileSync(packetPath, 'utf8');
+  const rawBytes = readFileSync(packetPath, 'utf8');
+  // Normalize CRLF -> LF before any byte-level comparisons. Windows checkouts
+  // with `core.autocrlf=true` will otherwise produce a packet whose on-disk
+  // bytes differ from the canonicalised form, causing the runner to rewrite
+  // a file the user considers unchanged. We surface a one-shot info warning
+  // so the rewrite is observable rather than silent.
+  const raw = rawBytes.replace(/\r\n/g, '\n');
+  const lineEndingsNormalized = raw !== rawBytes;
+  const preWarnings: string[] = [];
+  if (lineEndingsNormalized) {
+    preWarnings.push(
+      `MIGRATE_NORMALIZED_LINE_ENDINGS: packet file at ${packetPath} had CRLF line endings; normalized to LF`,
+    );
+  }
   const parsed = JSON.parse(raw) as Record<string, unknown>;
   const fromVersion = opts.from ?? (parsed.schema_version as string | undefined);
   if (typeof fromVersion !== 'string' || fromVersion.length === 0) {
@@ -89,7 +102,7 @@ export async function runMigrate(opts: MigrateCommandOptions): Promise<number> {
     to: toVersion,
     changed,
     history_snapshot: snapshotPath,
-    warnings: result.warnings,
+    warnings: [...preWarnings, ...result.warnings],
   };
 
   if (opts.json === true) {
@@ -117,7 +130,7 @@ export async function runMigrate(opts: MigrateCommandOptions): Promise<number> {
       exit_code: 0,
       duration_ms: Date.now() - start,
       packet_id: packetId,
-      shape: { warnings: result.warnings.length },
+      shape: { warnings: result.warnings.length + preWarnings.length },
       meta: { from: fromVersion, to: toVersion, changed },
     }),
     'command complete',

@@ -7,7 +7,7 @@ class Baton < Formula
   depends_on "node@20"
 
   def install
-    system "npm", "install", "--global", "--prefix=#{libexec}", buildpath/"@baton/cli-#{version}.tgz"
+    system "npm", "install", *Language::Node.std_npm_install_args(libexec)
     bin.install_symlink Dir["#{libexec}/bin/*"]
   end
 
