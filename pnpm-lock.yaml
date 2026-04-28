@@ -135,6 +135,9 @@ importers:
 
   packages/render:
     dependencies:
+      '@baton/llm':
+        specifier: workspace:*
+        version: link:../llm
       '@baton/schema':
         specifier: workspace:*
         version: link:../schema
