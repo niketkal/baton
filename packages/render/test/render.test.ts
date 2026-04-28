@@ -63,7 +63,7 @@ describe('render — generic target', () => {
 
   it('includes open questions text', () => {
     const result = render(FIXTURE, 'generic');
-    expect(result.markdown).toContain("Should the fix land on");
+    expect(result.markdown).toContain('Should the fix land on');
   });
 
   it('includes provenance table when includeProvenance is true', () => {
@@ -114,7 +114,7 @@ describe('render — claude-code target', () => {
 
   it('includes open questions text', () => {
     const result = render(FIXTURE, 'claude-code');
-    expect(result.markdown).toContain("Should the fix land on");
+    expect(result.markdown).toContain('Should the fix land on');
   });
 
   it('includes provenance table when includeProvenance is true', () => {
