@@ -29,8 +29,7 @@ function resolveContextLimit(
   options: RenderOptions | undefined,
   preambleLen: number,
 ): { limit: number | undefined; truncated: boolean } {
-  const budget =
-    options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
+  const budget = options?.contextBudget ?? packet.render_hints?.context_budget ?? undefined;
   if (budget === undefined) return { limit: undefined, truncated: false };
   const remaining = budget - Math.ceil(preambleLen / 4);
   if (remaining <= 0) return { limit: 0, truncated: packet.context_items.length > 0 };
