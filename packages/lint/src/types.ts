@@ -50,12 +50,50 @@ export type LintRuleResult = Array<{
 }>;
 
 /**
+ * Read-only filesystem accessor surfaced to rules that need to verify
+ * referenced paths exist (BTN012). Kept intentionally tiny so the lint
+ * package never imports `node:fs` directly — callers (engine,
+ * compiler, CLI) inject a sandboxed implementation. When omitted, rules
+ * that depend on it become no-ops.
+ */
+export interface LintFsAccessor {
+  existsSync(path: string): boolean;
+}
+
+/**
+ * Read-only git ref resolver surfaced to rules that need to verify a
+ * branch/commit resolves (BTN013). Same sandboxing rationale as
+ * LintFsAccessor.
+ */
+export interface LintGitRefResolver {
+  resolves(ref: string): boolean;
+}
+
+/**
+ * Pre-computed freshness signal supplied by the compiler / freshness
+ * subsystem (Session 13). When absent, BTN014 cannot make a stale
+ * determination and is a no-op.
+ */
+export interface LintFreshnessSignal {
+  stale: boolean;
+  reason?: string;
+}
+
+/**
  * Context passed to every rule. Will grow over time (repo head, freshness,
  * stale thresholds, etc.); kept intentionally narrow for now.
+ *
+ * The optional `fs`, `gitRefs`, and `freshness` fields let rules that
+ * need real I/O (BTN012/BTN013/BTN014) be exercised in Session 13
+ * without further changes here. They are all `?:` so existing callers
+ * that don't care about repo verification work unchanged.
  */
 export interface LintContext {
   repoRoot?: string;
   strict?: boolean;
+  fs?: LintFsAccessor;
+  gitRefs?: LintGitRefResolver;
+  freshness?: LintFreshnessSignal;
 }
 
 export interface LintRule {

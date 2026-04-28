@@ -1,0 +1,50 @@
+{
+  "schema_version": "baton.packet/v1",
+  "id": "demo-packet",
+  "title": "Demo packet",
+  "status": "draft",
+  "validation_level": "draft",
+  "task_type": "implementation",
+  "objective": "Implement a thing.",
+  "current_state": "Plan written.",
+  "next_action": "Start writing code.",
+  "open_questions": [],
+  "confidence_score": 0.5,
+  "repo_context": {
+    "attached": true,
+    "root": "/repo",
+    "vcs": "git",
+    "branch": "main",
+    "base_branch": "main",
+    "commit": "abc1234",
+    "base_commit": "def5678",
+    "dirty": false
+  },
+  "context_items": [
+    {
+      "kind": "file",
+      "ref": "src/main.ts",
+      "reason": "entry point",
+      "priority": 3,
+      "freshness_score": 1,
+      "provenance_refs": []
+    }
+  ],
+  "constraints": [],
+  "attempts": [],
+  "acceptance_criteria": [
+    {
+      "id": "ac-1",
+      "text": "Unit tests pass.",
+      "status": "unmet",
+      "required": true,
+      "source": "user",
+      "provenance_refs": ["prov-1"]
+    }
+  ],
+  "warnings": [],
+  "provenance_links": [],
+  "source_artifacts": [],
+  "created_at": "2026-04-27T00:00:00Z",
+  "updated_at": "2026-04-27T00:00:00Z"
+}
