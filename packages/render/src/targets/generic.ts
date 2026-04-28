@@ -81,7 +81,7 @@ function buildMarkdown(
   ].filter(Boolean);
 
   const truncatedNote = truncated
-    ? '\n> _Context list truncated to stay within token budget._'
+    ? '\n\n> _Context list truncated to stay within token budget._'
     : '';
 
   return { markdown: parts.join('\n\n') + truncatedNote, truncated };

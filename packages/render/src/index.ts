@@ -17,4 +17,3 @@ export function render(
 }
 
 export * from './types.js';
-export { genericRenderer } from './targets/generic.js';
