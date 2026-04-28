@@ -1,5 +1,12 @@
-import { detectSecrets } from '../secrets/detect.js';
+import { type SecretMatchKind, detectSecrets } from '../secrets/detect.js';
 import type { LintRule, LintRuleResult, Packet } from '../types.js';
+
+const KIND_LABEL: Record<SecretMatchKind, string> = {
+  pem: 'PEM private key',
+  env: '.env-style credential',
+  prefix: 'token prefix',
+  entropy: 'high-entropy secret',
+};
 
 /**
  * BTN060 no_apparent_secrets_in_artifacts
@@ -16,8 +23,9 @@ function pushSecrets(findings: LintRuleResult, text: unknown, path: string): voi
   const hits = detectSecrets(text);
   for (const hit of hits) {
     findings.push({
-      message: `Possible ${hit.kind === 'pem' ? 'PEM private key' : hit.kind === 'env' ? '.env-style credential' : hit.kind === 'prefix' ? 'token prefix' : 'high-entropy secret'} detected at ${path}.`,
+      message: `Possible ${KIND_LABEL[hit.kind]} detected at ${path}.`,
       path,
+      data: { kind: hit.kind, offset: hit.offset, length: hit.length },
     });
   }
 }

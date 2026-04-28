@@ -22,6 +22,12 @@ export interface LintFinding {
   severity: Severity;
   message: string;
   path?: string;
+  /**
+   * Optional structured payload for downstream consumers (e.g. `baton lint
+   * --json`) so they don't have to regex-parse `message`. Shape is
+   * rule-specific.
+   */
+  data?: Record<string, unknown>;
 }
 
 /**
@@ -40,6 +46,7 @@ export type LintRuleResult = Array<{
   message: string;
   path?: string;
   severity?: Severity;
+  data?: Record<string, unknown>;
 }>;
 
 /**

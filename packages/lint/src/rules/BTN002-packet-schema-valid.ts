@@ -18,7 +18,9 @@ export const BTN002: LintRule = {
     const findings: LintRuleResult = [];
     for (const err of result.errors) {
       const path = err.instancePath || '/';
-      const message = err.message ? `${path} ${err.message}` : `${path} failed schema validation`;
+      // The renderer already prefixes the `path` field; don't duplicate it
+      // in the message text.
+      const message = err.message ? err.message : 'failed schema validation';
       findings.push({ message, path });
     }
     if (findings.length === 0) {

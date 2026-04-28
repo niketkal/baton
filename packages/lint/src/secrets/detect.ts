@@ -1,5 +1,8 @@
 import { SECRET_PREFIXES } from './prefixes.js';
 
+// longest-first so 'sk-ant-' wins over 'sk-' for accurate kind reporting
+const SORTED_PREFIXES = [...SECRET_PREFIXES].sort((a, b) => b.length - a.length);
+
 export type SecretMatchKind = 'prefix' | 'pem' | 'env' | 'entropy';
 
 export interface SecretMatch {
@@ -80,13 +83,16 @@ export function detectSecrets(text: string): SecretMatch[] {
   // 1 & 4. Token-level heuristics
   for (const { token, offset } of tokenize(text)) {
     // 1. prefix
-    for (const prefix of SECRET_PREFIXES) {
+    for (const prefix of SORTED_PREFIXES) {
       if (token.startsWith(prefix) && token.length >= 16) {
         matches.push({ kind: 'prefix', match: token, offset, length: token.length });
         break;
       }
     }
     // 4. high-entropy near sensitive context
+    // The keyword window extends 40 characters on each side of the token
+    // (inclusive: a sensitive term whose nearest character is exactly 40
+    // away from the token boundary still counts; 41+ does not).
     if (token.length >= 20 && shannonEntropy(token) >= 4.0) {
       const winStart = Math.max(0, offset - 40);
       const winEnd = Math.min(text.length, offset + token.length + 40);

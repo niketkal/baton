@@ -32,6 +32,21 @@ export function lint(
   opts: LintOptions = {},
   rules: readonly LintRule[] = ALL_RULES,
 ): LintReport {
+  if (packet === null || typeof packet !== 'object' || Array.isArray(packet)) {
+    return {
+      packetId: '<unknown>',
+      status: 'failed',
+      errors: [
+        {
+          code: 'BTN-engine',
+          severity: 'critical',
+          message: 'packet is not an object',
+        },
+      ],
+      warnings: [],
+      summary: { blockingCount: 1, warningCount: 0 },
+    };
+  }
   const strict = opts.strict === true;
   const errors: LintFinding[] = [];
   const warnings: LintFinding[] = [];
@@ -58,6 +73,7 @@ export function lint(
         severity,
         message: f.message,
         ...(f.path !== undefined ? { path: f.path } : {}),
+        ...(f.data !== undefined ? { data: f.data } : {}),
       };
       const isError = severity === 'error' || severity === 'critical';
       if (isError || (strict && rule.failInStrict)) {
