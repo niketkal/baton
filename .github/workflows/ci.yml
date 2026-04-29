@@ -55,3 +55,22 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
+
+  performance-budget:
+    # Tech spec §11 budget enforcement. Runs separately from the
+    # default `pnpm -r test` matrix so dev iterations stay fast
+    # (perf suite spawns the binary repeatedly and takes ~30-60s).
+    # Per CLAUDE.md, adjusting any of these budgets requires a
+    # code-owner approval recorded in the PR.
+    name: performance-budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm --filter @baton/cli test:performance
