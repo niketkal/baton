@@ -18,17 +18,23 @@ export const BTN061_packetIdLowercase: LintRule = {
   description: 'Packet id must be lower-case kebab/snake/dot-separated.',
   check(packet) {
     if (packet.id !== packet.id.toLowerCase()) {
-      return {
-        ok: false,
-        messages: [
-          { code: 'BTN061', message: `Packet id "${packet.id}" must be lower-case.` },
-        ],
-      };
+      return [
+        {
+          message: `Packet id "${packet.id}" must be lower-case.`,
+          path: 'id',
+        },
+      ];
     }
-    return { ok: true };
+    return [];
   },
 };
 ```
+
+A rule's `check()` returns a `LintRuleResult` — an array of zero or more
+findings. Return `[]` to pass; return one or more `{ message, path?,
+severity?, data? }` objects to fail. The engine fills in `code` from the
+rule and applies the rule's default `severity` to any finding that
+doesn't override it.
 
 Rules are pure functions over `(packet, ctx)`. No filesystem or network
 side effects. If you need repo state, use `ctx.fs` (read-only sandboxed)
@@ -97,8 +103,8 @@ test fails, check that:
   `index.ts`
 - `code` matches the directory name prefix
 - both `good` and `bad` fixtures validate against the packet schema
-- the rule's `check()` returns `{ ok: false, messages: [...] }` on the
-  bad fixture and `{ ok: true }` on the good one
+- the rule's `check()` returns a non-empty findings array on the bad
+  fixture and `[]` on the good one
 
 ## 6. Open a PR
 

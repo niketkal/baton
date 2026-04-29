@@ -250,7 +250,10 @@ Targets in v1:
 - `cursor`
 - `generic`
 
-### `baton dispatch`
+### `baton dispatch` *(planned, v1.x)*
+
+> Specified here as the normative interface; not yet present in the
+> shipped CLI. Tracked against the v1.0 milestone.
 
 Send a rendered payload through an adapter.
 
@@ -261,7 +264,10 @@ baton dispatch flaky-test-fix --target codex --adapter shell
 
 Dispatch respects policy and approval settings (BTN042, BTN043, BTN050).
 
-### `baton outcome ingest`
+### `baton outcome ingest` *(planned, v1.x)*
+
+> Specified here as the normative interface; not yet present in the
+> shipped CLI. Tracked against the v1.0 milestone.
 
 Ingest the result of a dispatched packet.
 
@@ -276,7 +282,10 @@ Effects:
 - updates packet state via the legal status transitions in BTN040
 - may generate follow-up packet recommendations
 
-### `baton status`
+### `baton status` *(planned, v1.x)*
+
+> Specified here as the normative interface; not yet present in the
+> shipped CLI. Tracked against the v1.0 milestone.
 
 Show the current state of a packet.
 
@@ -291,7 +300,10 @@ Status output also surfaces:
 - active hook or wrapper integration mode
 - last automatic checkpoint result
 
-### `baton history`
+### `baton history` *(planned, v1.x)*
+
+> Specified here as the normative interface; not yet present in the
+> shipped CLI. Tracked against the v1.0 milestone.
 
 Show packet versions, dispatches, and outcomes.
 
@@ -315,7 +327,10 @@ Effects:
 - preserves prior snapshots in history
 - reports any manual follow-up required
 
-### `baton conformance`
+### `baton conformance` *(planned, v1.x)*
+
+> Specified here as the normative interface; not yet present in the
+> shipped CLI. Tracked against the v1.0 milestone.
 
 Run the public conformance suite.
 

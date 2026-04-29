@@ -20,28 +20,38 @@ Use Baton when:
 > public surface and are being stabilized. Don't depend on this in production
 > yet.
 
-## 30-second quickstart
+## Quickstart
+
+> **Pre-v1:** Baton is not yet published to npm. The instructions below
+> build from source. Once v1.0.0 ships, `npm install -g @baton/cli` will
+> work directly and the quickstart will collapse to a single command.
 
 ```bash
-# install (once)
-npm install -g @baton/cli
+# 1. Clone and build
+git clone https://github.com/niketkal/baton.git
+cd baton
+pnpm install
+pnpm -r build
 
-# in a repo, set up integrations
-baton init
+# 2. Run the CLI directly
+node packages/cli/dist/bin.js --version
 
-# hit a wall in Claude Code, want Codex to take over?
+# 3. (Optional) Symlink as `baton` on your PATH
+ln -s "$(pwd)/packages/cli/dist/bin.js" /usr/local/bin/baton
+chmod +x /usr/local/bin/baton
+
+# 4. Use it
+baton init                               # set up integrations in your project
 baton failover --from claude-code --to codex --packet current-task --copy
 ```
 
-That's the canonical path: `baton failover` reads your latest artifacts,
-compiles a packet, runs non-strict lint, renders a target-specific handoff,
-and copies it to your clipboard. Paste it into the next tool and continue.
+`baton failover` reads your latest artifacts, compiles a packet, runs
+non-strict lint, renders a target-specific handoff, and copies it to your
+clipboard. Paste it into the next tool and continue.
 
-For first-time trial without a global install:
-
-```bash
-npx @baton/cli failover --from claude-code --to codex --packet current-task
-```
+The npm and `npx @baton/cli ...` paths described in
+[ADR 0007](docs/adr/0007-distribution-npm-brew.md) become available once
+v1.0.0 is published.
 
 ## What ships in v1
 
@@ -52,9 +62,14 @@ npx @baton/cli failover --from claude-code --to codex --packet current-task
 - `baton lint` / `baton lint --strict` — certification rules (BTN001–BTN060)
 - `baton render` — target-specific output for Claude Code, Codex, Cursor, or
   generic markdown
-- `baton dispatch` / `baton outcome ingest` — close the loop
+- `baton dispatch` / `baton outcome ingest` — close the loop *(planned)*
+- `baton status` / `baton history` — inspect a packet's current state and
+  past versions, dispatches, and outcomes *(planned)*
 - `baton conformance` — public test suite anyone can run against an
-  implementation that claims Baton compatibility
+  implementation that claims Baton compatibility *(planned)*
+
+*Planned* commands are specified in the CLI contract but not yet in the
+shipped CLI; tracking issues are filed against the v1.0 milestone.
 
 Bring your own LLM key (Anthropic or OpenAI in v1). The CLI does not phone
 home; logs are local and redacted by default.

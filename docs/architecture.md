@@ -334,8 +334,10 @@ User-facing entry point.
 
 - `bin/baton.ts` — shebang entry, sets up logger, dispatches to commands
 - `commands/init.ts`, `uninstall.ts`, `compile.ts`, `failover.ts`, `lint.ts`,
-  `render.ts`, `dispatch.ts`, `outcome.ts`, `status.ts`, `history.ts`,
-  `migrate.ts`, `conformance.ts`
+  `render.ts`, `ingest.ts`, `migrate.ts` — currently shipped
+- *Planned (v1.x):* `dispatch.ts`, `outcome.ts`, `status.ts`, `history.ts`,
+  `conformance.ts` — specified in the CLI contract; tracking issues are
+  open against the v1.0 milestone
 - `output/` — human and JSON renderers; `redactForLog()` lives here
 - `config.ts` — loads and validates `.baton/config.toml`
 

@@ -8,7 +8,7 @@ organized so that most contributions land in a single package.
 ## Quick start
 
 ```bash
-git clone https://github.com/baton-ai/baton.git
+git clone https://github.com/niketkal/baton.git
 cd baton
 pnpm install
 pnpm -r build
@@ -95,7 +95,7 @@ types and the conformance suite:
 
 ## Issues
 
-- File issues at https://github.com/baton-ai/baton/issues.
+- File issues at https://github.com/niketkal/baton/issues.
 - Use the bug template; include `baton --version` and, where relevant,
   `baton status --json` output.
 - Label `good-first-issue` and `help-wanted` issues are a good place to
