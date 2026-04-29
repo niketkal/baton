@@ -9,14 +9,12 @@
 // See test/performance/cold-start.test.ts for the regression check.
 import type { Command } from 'commander';
 import { registerCompile } from './compile.js';
-<<<<<<< HEAD
 import { registerConformance } from './conformance.js';
-=======
 import { registerDispatch } from './dispatch.js';
->>>>>>> 0169164 (feat(integrations,cli): codex wrapper + cursor paste + outcome/dispatch (Session 15))
 import { registerFailover } from './failover.js';
 import { registerIngest } from './ingest.js';
 import { registerInit } from './init.js';
+import { registerInternal } from './internal.js';
 import { registerLint } from './lint.js';
 import { registerMigrate } from './migrate.js';
 import { registerOutcome } from './outcome.js';
@@ -32,12 +30,10 @@ export function registerCommands(program: Command): void {
   registerLint(program);
   registerFailover(program);
   registerMigrate(program);
-<<<<<<< HEAD
   registerConformance(program);
-=======
   registerDispatch(program);
   registerOutcome(program);
->>>>>>> 0169164 (feat(integrations,cli): codex wrapper + cursor paste + outcome/dispatch (Session 15))
+  registerInternal(program);
 }
 
 export { runInit } from './init.js';
@@ -48,9 +44,6 @@ export { runRender } from './render.js';
 export { runLint } from './lint.js';
 export { runFailover } from './failover.js';
 export { runMigrate } from './migrate.js';
-<<<<<<< HEAD
 export { runConformanceCommand } from './conformance.js';
-=======
 export { runDispatch } from './dispatch.js';
 export { runOutcomeIngest, classifyOutcome } from './outcome.js';
->>>>>>> 0169164 (feat(integrations,cli): codex wrapper + cursor paste + outcome/dispatch (Session 15))
