@@ -80,8 +80,10 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
   checkAborted(opts.signal);
   const repoCtx = await attachRepo({ root: opts.repoRoot });
   const persistEnabled = opts.storeRoot !== false;
-  const storeRoot =
-    typeof opts.storeRoot === 'string' ? opts.storeRoot : join(opts.repoRoot, '.baton');
+  // PacketStore.open takes the repo root and appends `.baton` itself
+  // (see @baton/store paths.resolvePaths). If the caller supplied an
+  // explicit storeRoot string we use it verbatim — same contract.
+  const storeRoot = typeof opts.storeRoot === 'string' ? opts.storeRoot : opts.repoRoot;
 
   let prior: Packet | null = null;
   let store: PacketStore | null = null;

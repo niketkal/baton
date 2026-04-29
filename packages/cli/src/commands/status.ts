@@ -124,7 +124,7 @@ export async function buildStatusReport(opts: StatusOptions): Promise<StatusRepo
   const { PacketStore } = await import('@baton/store');
   const repoRoot = opts.repo ?? process.cwd();
   const batonDir = join(repoRoot, '.baton');
-  const store = PacketStore.open(batonDir);
+  const store = PacketStore.open(repoRoot);
   try {
     if (opts.packet === undefined || opts.packet === '') {
       const packets = store.list().map<StatusPacketSummary>((s) => ({

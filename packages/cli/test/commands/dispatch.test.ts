@@ -50,7 +50,7 @@ describe('dispatch', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'baton-dispatch-'));
     resetLoggerCacheForTests();
-    const store = PacketStore.open(join(dir, '.baton'));
+    const store = PacketStore.open(dir);
     try {
       store.create(makePacket());
     } finally {

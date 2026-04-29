@@ -61,7 +61,7 @@ describe('compile (fast mode)', () => {
       mode: 'fast',
       artifacts: [transcriptArtifact],
     });
-    const store = PacketStore.open(join(tmp, '.baton'));
+    const store = PacketStore.open(tmp);
     try {
       const fromDisk = store.read('demo');
       expect(fromDisk).toEqual(result.packet);
@@ -80,7 +80,7 @@ describe('compile (fast mode)', () => {
 
     // Hand-edit a narrative field via the store to simulate an LLM
     // extraction that we want to preserve through fast-mode rebuilds.
-    const store = PacketStore.open(join(tmp, '.baton'));
+    const store = PacketStore.open(tmp);
     try {
       const p = store.read('demo');
       store.update({ ...p, objective: 'A specific LLM-derived objective.' });

@@ -63,7 +63,7 @@ describe('status', () => {
   });
 
   it('lists all packets when --packet is omitted', async () => {
-    const store = PacketStore.open(join(dir, '.baton'));
+    const store = PacketStore.open(dir);
     try {
       store.create(makePacket('alpha', { updated_at: '2026-04-27T01:00:00.000Z' }));
       store.create(makePacket('bravo', { updated_at: '2026-04-27T02:00:00.000Z' }));
@@ -79,7 +79,7 @@ describe('status', () => {
   });
 
   it('returns detail view for a single packet with latest dispatch + outcome + warnings', async () => {
-    const store = PacketStore.open(join(dir, '.baton'));
+    const store = PacketStore.open(dir);
     try {
       store.create(
         makePacket('flaky-test-fix', {
@@ -149,7 +149,7 @@ describe('status', () => {
 
   it('returns exit 1 with stderr message for an unknown packet', async () => {
     // No packets created.
-    PacketStore.open(join(dir, '.baton')).close();
+    PacketStore.open(dir).close();
     const code = await runStatus({ packet: 'nope', repo: dir });
     expect(code).toBe(1);
     const errs = stderr.mock.calls.map((c) => c[0] as string).join('');
@@ -157,7 +157,7 @@ describe('status', () => {
   });
 
   it('emits JSON list when --json is set', async () => {
-    const store = PacketStore.open(join(dir, '.baton'));
+    const store = PacketStore.open(dir);
     try {
       store.create(makePacket('alpha'));
     } finally {

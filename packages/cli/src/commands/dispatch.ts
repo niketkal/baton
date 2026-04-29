@@ -117,7 +117,7 @@ export async function runDispatch(opts: DispatchOptions): Promise<number> {
   // pulls @baton/render. Keep them off the cold-start path.
   const { render } = await import('@baton/render');
   const { PacketStore } = await import('@baton/store');
-  const store = PacketStore.open(join(repoRoot, '.baton'));
+  const store = PacketStore.open(repoRoot);
   let markdown: string;
   try {
     const packet = store.read(opts.packet);
