@@ -1,0 +1,16 @@
+{
+  "id": "feature-implementation",
+  "description": "Session implementing a new --dry-run flag on an export command, with a stdout-parity constraint.",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/transcript.md" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1",
+      "task_type": "implementation"
+    },
+    "lintResult": {
+      "passed": true
+    }
+  }
+}

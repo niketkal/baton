@@ -1,0 +1,16 @@
+{
+  "id": "simple-debugging",
+  "description": "Claude Code session debugging a flaky parseDate test caused by timezone-dependent parsing.",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/transcript.md" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1",
+      "task_type": "debugging"
+    },
+    "lintResult": {
+      "passed": true
+    }
+  }
+}

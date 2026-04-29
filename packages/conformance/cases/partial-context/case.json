@@ -1,0 +1,16 @@
+{
+  "id": "partial-context",
+  "description": "Session continued from a previous one with a referenced runbook missing; expected to surface a partial-context lint signal (BTN010 or similar).",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/transcript.md" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1"
+    },
+    "lintResult": {
+      "passed": false,
+      "codes": ["BTN010"]
+    }
+  }
+}
