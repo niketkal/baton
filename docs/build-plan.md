@@ -30,16 +30,16 @@
 | 8 | `@baton/cli` — commander scaffold + 5 commands wired (week-1 demo gate) | ✅ `f128820` (PR #4 squashed, wave 1 parallel) |
 | 9 | Provenance + remark round-trip + selectively editable packet.md | ✅ `e4fe3c2` (PR #7 squashed, wave 2 parallel) |
 | 10 | BTN010–BTN040 (repo-context, freshness, AC, provenance per canonical doc) | ✅ `37ce974` (PR #3 squashed, wave 1 parallel) |
-| 11 | LLM extraction prompts (objective, attempts, AC, next-action) + cost reporting | ⏳ wave 3 |
+| 11 | LLM extraction prompts (objective, attempts, AC, next-action) + cost reporting | ✅ `b69e0ca` (PR #8 squashed, wave 3 parallel) |
 | 12 | Renderers: codex + cursor + snapshot tests + token estimation | ✅ `c0231b5` (PR #2 squashed, wave 1 parallel) |
 | 13 | Repo awareness: git refs, dirty-state, freshness scoring | ⏳ |
 | 14 | `@baton/integrations/claude-code` native hook + `baton init`/`uninstall` | ✅ `6cab9a4` (PR #6 squashed, wave 2 parallel) |
-| 15 | `@baton/integrations/codex` wrapper launcher + Cursor paste flow + `baton outcome` | ⏳ wave 3 |
+| 15 | `@baton/integrations/codex` wrapper launcher + Cursor paste flow + `baton outcome` | ✅ `e1e5f6e` (PR #9 squashed, wave 3 parallel) |
 | 16 | BTN041–BTN050 dispatch-gating rules + `baton dispatch` + `baton history` | ⏳ |
-| 17 | `@baton/conformance` — runner + 5–10 reference cases | ⏳ wave 3 |
+| 17 | `@baton/conformance` — runner + 5–10 reference cases | ✅ `4298130` (PR #11 squashed, wave 3 parallel) |
 | 18 | Performance budgets in CI + `baton failover` end-to-end + cold-start optimization | ⏳ |
 | 19 | `baton migrate` skeleton + Homebrew formula + npm publish workflow | ✅ `ee5b045` (PR #5 squashed, wave 2 parallel) |
-| 20 | Docs polish: README, CONTRIBUTING, 4 contributor guides, ADRs 0001–0010 | ⏳ wave 3 |
+| 20 | Docs polish: README, CONTRIBUTING, 4 contributor guides, ADRs 0001–0010 | ✅ `93e36cb` (PR #10 squashed, wave 3 parallel) |
 
 Pre-flip-public checklist (after Session 20): `SECURITY.md`, `CODEOWNERS`, branch protection on `main`, npm `@baton` org, npm trusted publishing config, GitHub Environment for `npm-publish`, pre-flip grep for competitor names / commercial framing.
 
