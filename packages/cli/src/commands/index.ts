@@ -12,6 +12,7 @@ import { registerCompile } from './compile.js';
 import { registerConformance } from './conformance.js';
 import { registerDispatch } from './dispatch.js';
 import { registerFailover } from './failover.js';
+import { registerHistory } from './history.js';
 import { registerIngest } from './ingest.js';
 import { registerInit } from './init.js';
 import { registerInternal } from './internal.js';
@@ -19,6 +20,7 @@ import { registerLint } from './lint.js';
 import { registerMigrate } from './migrate.js';
 import { registerOutcome } from './outcome.js';
 import { registerRender } from './render.js';
+import { registerStatus } from './status.js';
 import { registerUninstall } from './uninstall.js';
 
 export function registerCommands(program: Command): void {
@@ -33,6 +35,8 @@ export function registerCommands(program: Command): void {
   registerConformance(program);
   registerDispatch(program);
   registerOutcome(program);
+  registerStatus(program);
+  registerHistory(program);
   registerInternal(program);
 }
 
@@ -47,3 +51,5 @@ export { runMigrate } from './migrate.js';
 export { runConformanceCommand } from './conformance.js';
 export { runDispatch } from './dispatch.js';
 export { runOutcomeIngest, classifyOutcome } from './outcome.js';
+export { runStatus } from './status.js';
+export { runHistory } from './history.js';

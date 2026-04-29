@@ -96,6 +96,22 @@ export interface LintFreshnessSignal {
 }
 
 /**
+ * The set of legal `BatonPacket.status` values, mirrored as a string
+ * literal type so callers can type the optional `priorStatus` they
+ * pass into the lint engine without depending on the schema package
+ * directly. Kept in sync with packet.schema.json.
+ */
+export type PacketStatus =
+  | 'draft'
+  | 'ready_for_export'
+  | 'awaiting_approval'
+  | 'dispatched'
+  | 'awaiting_outcome'
+  | 'needs_clarification'
+  | 'completed'
+  | 'abandoned';
+
+/**
  * Context passed to every rule. Will grow over time (repo head, freshness,
  * stale thresholds, etc.); kept intentionally narrow for now.
  *
@@ -110,6 +126,23 @@ export interface LintContext {
   fs?: LintFsAccessor;
   gitRefs?: LintGitRefResolver;
   freshness?: LintFreshnessSignal;
+  /**
+   * The status the packet held before its current value, typically
+   * derived from the most-recent `.baton/history/packets/<id>/v*.json`
+   * snapshot or the dispatch-events journal. Required for BTN040 to
+   * evaluate transition legality. When absent or `null`, BTN040 is a
+   * no-op (it does not have enough information to assess the move).
+   */
+  priorStatus?: PacketStatus | null;
+  /**
+   * Approval-grant signal for BTN042. When `true` (or, for the JSON
+   * variant, an object with `granted: true`), the packet is treated
+   * as having satisfied its `policy.approval_required` gate. When
+   * unset, only packets in `awaiting_approval` are considered ungated;
+   * any other status with `approval_required = true` triggers BTN042
+   * unless `approvalGranted` says otherwise.
+   */
+  approvalGranted?: boolean;
 }
 
 export interface LintRule {

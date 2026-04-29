@@ -8,6 +8,7 @@ import { BTN002 } from '../src/rules/BTN002-packet-schema-valid.js';
 import { BTN012 } from '../src/rules/BTN012-referenced-files-exist.js';
 import { BTN013 } from '../src/rules/BTN013-git-refs-resolve.js';
 import { BTN014 } from '../src/rules/BTN014-packet-not-stale.js';
+import { BTN040 } from '../src/rules/BTN040-status-transition-legal.js';
 import { ALL_RULES } from '../src/rules/index.js';
 import { detectSecrets } from '../src/secrets/detect.js';
 import type { LintRule, Packet } from '../src/types.js';
@@ -82,6 +83,26 @@ const CASES: Case[] = [
     expectedSeverity: 'warning',
   },
   {
+    rule: 'BTN041',
+    folder: 'BTN041-ready-requires-validation-level-ready',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN042',
+    folder: 'BTN042-approval-policy-respected',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN043',
+    folder: 'BTN043-dispatch-allowed-policy-respected',
+    expectedSeverity: 'error',
+  },
+  {
+    rule: 'BTN050',
+    folder: 'BTN050-blocking-warnings-gate-dispatch',
+    expectedSeverity: 'error',
+  },
+  {
     rule: 'BTN060',
     folder: 'BTN060-no-apparent-secrets-in-artifacts',
     expectedSeverity: 'critical',
@@ -106,6 +127,11 @@ describe('lint engine — registry', () => {
       'BTN031',
       'BTN032',
       'BTN033',
+      'BTN040',
+      'BTN041',
+      'BTN042',
+      'BTN043',
+      'BTN050',
       'BTN060',
     ]);
   });
@@ -263,6 +289,50 @@ describe('BTN014 with injected freshness signal', () => {
     const packet = load('BTN014-packet-not-stale', 'bad');
     const findings = BTN014.check(packet, {});
     expect(findings).toEqual([]);
+  });
+});
+
+describe('BTN040 with injected priorStatus', () => {
+  it('is a no-op when ctx.priorStatus is absent', () => {
+    const packet = load('BTN040-status-transition-legal', 'bad');
+    const findings = BTN040.check(packet, {});
+    expect(findings).toEqual([]);
+  });
+
+  it('is a no-op when ctx.priorStatus equals current status', () => {
+    const packet = load('BTN040-status-transition-legal', 'good');
+    const findings = BTN040.check(packet, { priorStatus: 'ready_for_export' });
+    expect(findings).toEqual([]);
+  });
+
+  it('passes a legal transition (draft -> ready_for_export)', () => {
+    const packet = load('BTN040-status-transition-legal', 'good');
+    const findings = BTN040.check(packet, { priorStatus: 'draft' });
+    expect(findings).toEqual([]);
+  });
+
+  it('flags an illegal skip (draft -> dispatched)', () => {
+    const packet = load('BTN040-status-transition-legal', 'bad');
+    const findings = BTN040.check(packet, { priorStatus: 'draft' });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/draft/);
+    expect(findings[0]?.message).toMatch(/dispatched/);
+    expect(findings[0]?.path).toBe('/status');
+  });
+
+  it('flags any move out of a terminal status', () => {
+    const packet = load('BTN040-status-transition-legal', 'good');
+    const findings = BTN040.check(packet, { priorStatus: 'completed' });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/terminal/);
+  });
+});
+
+describe('BTN042 approvalGranted gates dispatch', () => {
+  it('clears the finding when approvalGranted=true', () => {
+    const packet = load('BTN042-approval-policy-respected', 'bad');
+    const report = lint(packet, { approvalGranted: true });
+    expect(report.errors.map((f) => f.code)).not.toContain('BTN042');
   });
 });
 

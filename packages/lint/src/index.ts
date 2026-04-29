@@ -13,6 +13,8 @@ export type {
   LintRule,
   LintRuleResult,
   LintWarning,
+  PacketStatus,
   Packet,
   Severity,
 } from './types.js';
+export { ALLOWED_TRANSITIONS } from './rules/BTN040-status-transition-legal.js';

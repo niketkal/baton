@@ -16,6 +16,11 @@ import { BTN030 } from './BTN030-constraints-require-provenance.js';
 import { BTN031 } from './BTN031-attempt-failures-require-evidence.js';
 import { BTN032 } from './BTN032-acceptance-criteria-require-provenance.js';
 import { BTN033 } from './BTN033-context-items-require-provenance.js';
+import { BTN040 } from './BTN040-status-transition-legal.js';
+import { BTN041 } from './BTN041-ready-requires-validation-level-ready.js';
+import { BTN042 } from './BTN042-approval-policy-respected.js';
+import { BTN043 } from './BTN043-dispatch-allowed-policy-respected.js';
+import { BTN050 } from './BTN050-blocking-warnings-gate-dispatch.js';
 import { BTN060 } from './BTN060-no-apparent-secrets-in-artifacts.js';
 
 export const ALL_RULES: readonly LintRule[] = Object.freeze([
@@ -34,6 +39,11 @@ export const ALL_RULES: readonly LintRule[] = Object.freeze([
   BTN031,
   BTN032,
   BTN033,
+  BTN040,
+  BTN041,
+  BTN042,
+  BTN043,
+  BTN050,
   BTN060,
 ]);
 
@@ -53,5 +63,10 @@ export {
   BTN031,
   BTN032,
   BTN033,
+  BTN040,
+  BTN041,
+  BTN042,
+  BTN043,
+  BTN050,
   BTN060,
 };
