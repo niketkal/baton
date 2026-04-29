@@ -12,14 +12,29 @@ export async function runLint(opts: LintCommandOptions): Promise<number> {
   const start = Date.now();
   const repoRoot = opts.repo ?? process.cwd();
   // Lazy-load: PacketStore drags better-sqlite3, lint is its own
-  // chunk. Both off the cold-start path.
+  // chunk, and `@baton/compiler` pulls simple-git for repo attach.
+  // All off the cold-start path.
   const { lint } = await import('@baton/lint');
   const { PacketStore } = await import('@baton/store');
+  const { attachRepo, assessFreshness } = await import('@baton/compiler');
   const store = PacketStore.open(join(repoRoot, '.baton'));
   let report: ReturnType<typeof lint>;
   try {
     const packet = store.read(opts.packet);
-    report = lint(packet, { repoRoot }, { strict: opts.strict === true });
+    // Construct the real LintContext: BTN012/013/014 only fire when
+    // the compiler-side accessors and freshness signal are injected.
+    const repo = await attachRepo({ root: repoRoot });
+    const freshness = await assessFreshness(packet, repo);
+    const lintCtx: Parameters<typeof lint>[1] = {
+      repoRoot,
+      ...(repo.fs !== undefined ? { fs: repo.fs } : {}),
+      ...(repo.gitRefs !== undefined ? { gitRefs: repo.gitRefs } : {}),
+      freshness: {
+        stale: freshness.stale,
+        ...(freshness.reason !== undefined ? { reason: freshness.reason } : {}),
+      },
+    };
+    report = lint(packet, lintCtx, { strict: opts.strict === true });
   } finally {
     store.close();
   }

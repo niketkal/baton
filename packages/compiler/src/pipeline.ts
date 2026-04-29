@@ -78,7 +78,7 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
 
   // Step 3: assemble.
   checkAborted(opts.signal);
-  const repoCtx = attachRepo(opts.repoRoot);
+  const repoCtx = await attachRepo({ root: opts.repoRoot });
   const persistEnabled = opts.storeRoot !== false;
   const storeRoot =
     typeof opts.storeRoot === 'string' ? opts.storeRoot : join(opts.repoRoot, '.baton');

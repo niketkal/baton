@@ -393,6 +393,62 @@ describe('BTN004 type-mismatch handling', () => {
   });
 });
 
+describe('BTN012 with real filesystem accessor (integration)', () => {
+  it('fires when a referenced file is missing on disk', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'btn012-int-'));
+    try {
+      // Create only one of the two referenced files.
+      fs.writeFileSync(path.join(tmp, 'present.ts'), 'export {};\n');
+
+      const packet = load('BTN012-referenced-files-exist', 'good');
+      // Re-target the fixture's repo_context.root and refs at our tmp dir.
+      (packet.repo_context as { root: string }).root = tmp;
+      packet.context_items = [
+        {
+          kind: 'file',
+          ref: 'present.ts',
+          reason: 'present',
+          priority: 3,
+          freshness_score: 1,
+          provenance_refs: [],
+        },
+        {
+          kind: 'file',
+          ref: 'absent.ts',
+          reason: 'absent',
+          priority: 3,
+          freshness_score: 1,
+          provenance_refs: [],
+        },
+      ] as Packet['context_items'];
+
+      // A minimal sandboxed accessor matching the one attachRepo
+      // builds: accepts paths inside `tmp`, rejects anything outside.
+      const normRoot = path.normalize(tmp);
+      const rootWithSep = normRoot.endsWith(path.sep) ? normRoot : normRoot + path.sep;
+      const fsAcc = {
+        existsSync(p: string): boolean {
+          const candidate = path.isAbsolute(p)
+            ? path.normalize(p)
+            : path.normalize(path.join(tmp, p));
+          if (candidate !== normRoot && !candidate.startsWith(rootWithSep)) return false;
+          return fs.existsSync(candidate);
+        },
+      };
+      const report = lint(packet, { fs: fsAcc });
+      const btn012 = report.errors.filter((f) => f.code === 'BTN012');
+      expect(btn012).toHaveLength(1);
+      expect(btn012[0]?.message).toMatch(/absent\.ts/);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('BTN002 fallback when ajv reports no error objects', () => {
   it('emits a single generic schema-invalid finding', () => {
     // Simulate the rare ajv mode where validation fails but `errors` is null

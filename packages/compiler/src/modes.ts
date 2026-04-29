@@ -92,11 +92,11 @@ export function runFastMode(
         attached: true,
         root: ctx.repoCtx.root ?? '',
         vcs: 'git',
-        branch: ctx.repoCtx.branch,
-        base_branch: ctx.repoCtx.baseBranch,
-        commit: ctx.repoCtx.commit,
-        base_commit: ctx.repoCtx.baseCommit,
-        dirty: ctx.repoCtx.isDirty,
+        branch: ctx.repoCtx.branch ?? null,
+        base_branch: ctx.repoCtx.baseBranch ?? null,
+        commit: ctx.repoCtx.commit ?? null,
+        base_commit: ctx.repoCtx.baseCommit ?? null,
+        dirty: ctx.repoCtx.dirty ?? false,
       }
     : {
         attached: false,
