@@ -22,3 +22,10 @@ export {
   type ByteSpan,
   type NodeWithPosition,
 } from './extract/ast-spans.js';
+export {
+  estimateCostUsd,
+  findPricing,
+  PRICING_TABLE,
+  type CostEstimate,
+  type ModelPricing,
+} from './extract/pricing.js';

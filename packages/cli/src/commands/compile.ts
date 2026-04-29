@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ArtifactRef, ArtifactType, CompileMode } from '@baton/compiler';
+import type { LLMCache, LLMProvider } from '@baton/llm';
 import type { Command } from 'commander';
 
 export interface CompileCommandOptions {
@@ -8,6 +9,16 @@ export interface CompileCommandOptions {
   mode?: CompileMode;
   repo?: string;
   json?: boolean;
+  /**
+   * Test-only: forward an explicit LLM provider into the pipeline.
+   * Bypasses provider auto-detection so unit tests can pin a mock
+   * without touching `ANTHROPIC_API_KEY`. Not surfaced as a CLI flag.
+   */
+  llm?: LLMProvider;
+  /**
+   * Test-only: forward a pre-constructed cache. `null` disables.
+   */
+  cache?: LLMCache | null;
 }
 
 interface ArtifactMeta {
@@ -62,19 +73,17 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
   const repoRoot = opts.repo ?? process.cwd();
   const mode: CompileMode = opts.mode ?? 'fast';
 
-  if (mode === 'full') {
-    process.stderr.write('compile --full is not implemented until Session 11\n');
-    return 1;
-  }
-
-  const { compile } = await import('@baton/compiler');
+  const { compile, estimateCostUsd } = await import('@baton/compiler');
   const artifacts = collectArtifacts(repoRoot, opts.packet);
-  const result = await compile({
+  const compileOpts: Parameters<typeof compile>[0] = {
     packetId: opts.packet,
     repoRoot,
     mode,
     artifacts,
-  });
+  };
+  if (opts.llm !== undefined) compileOpts.llm = opts.llm;
+  if (opts.cache !== undefined) compileOpts.cache = opts.cache;
+  const result = await compile(compileOpts);
 
   const { renderHumanResult, renderHumanWarnings } = await import('../output/human.js');
   const { renderJsonResult } = await import('../output/json.js');
@@ -111,22 +120,61 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
     }
   }
 
+  // Cost block (full mode only). Per tech spec §7.5 we print to
+  // stderr in human mode so it doesn't pollute piped JSON. In --json
+  // mode we skip the human cost block; the structured fields are
+  // already in the JSON payload above (and in the log event below).
+  const tokensIn = result.tokensIn ?? 0;
+  const tokensOut = result.tokensOut ?? 0;
+  const provider = result.llmProvider ?? '';
+  const model = result.llmModel ?? '';
+  let costMin: number | undefined;
+  let costMax: number | undefined;
+  if (mode === 'full' && opts.json !== true) {
+    const totalCalls = result.cacheHits + result.cacheMisses;
+    const lines: string[] = [];
+    lines.push(`LLM calls: ${totalCalls} (${result.cacheHits} cached, ${result.cacheMisses} live)`);
+    lines.push(
+      `Tokens: ${tokensIn.toLocaleString('en-US')} input / ${tokensOut.toLocaleString('en-US')} output`,
+    );
+    const cost = estimateCostUsd(provider, model, tokensIn, tokensOut);
+    if (cost) {
+      costMin = cost.min;
+      costMax = cost.max;
+      lines.push(
+        `Estimated cost: $${cost.min.toFixed(3)} to $${cost.max.toFixed(3)} (provider: ${provider}, model: ${model})`,
+      );
+    }
+    process.stderr.write(`${lines.join('\n')}\n`);
+  } else if (mode === 'full') {
+    const cost = estimateCostUsd(provider, model, tokensIn, tokensOut);
+    if (cost) {
+      costMin = cost.min;
+      costMax = cost.max;
+    }
+  }
+
   const { getLogger } = await import('../output/logger.js');
   const { redactForLog } = await import('../output/redact.js');
   const { logger } = getLogger(repoRoot);
-  logger.info(
-    redactForLog({
-      command: 'compile',
-      mode,
-      exit_code: result.valid ? 0 : 2,
-      duration_ms: Date.now() - start,
-      packet_id: opts.packet,
-      llm_calls_live: 0,
-      llm_calls_cached: result.cacheHits,
-      shape: { warnings: result.warnings.length },
-    }),
-    'command complete',
-  );
+  const meta: Parameters<typeof redactForLog>[0] = {
+    command: 'compile',
+    mode,
+    exit_code: result.valid ? 0 : 2,
+    duration_ms: Date.now() - start,
+    packet_id: opts.packet,
+    llm_calls_live: result.cacheMisses,
+    llm_calls_cached: result.cacheHits,
+    tokens_in: tokensIn,
+    tokens_out: tokensOut,
+    shape: { warnings: result.warnings.length },
+  };
+  if (provider) (meta as { llm_provider?: string }).llm_provider = provider;
+  if (costMin !== undefined)
+    (meta as { estimated_cost_usd_min?: number }).estimated_cost_usd_min = costMin;
+  if (costMax !== undefined)
+    (meta as { estimated_cost_usd_max?: number }).estimated_cost_usd_max = costMax;
+  logger.info(redactForLog(meta), 'command complete');
   return result.valid ? 0 : 2;
 }
 

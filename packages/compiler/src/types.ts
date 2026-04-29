@@ -46,6 +46,21 @@ export interface CompileOptions {
    * persist this compile" — useful for tests and dry-run paths.
    */
   storeRoot?: string | false;
+  /**
+   * Optional explicit LLM provider for `--full` mode. If omitted, the
+   * pipeline calls `getProvider()` from `@baton/llm` with no config
+   * (the registry honours `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in
+   * priority order). Tests pass an explicit `MockProvider` so they
+   * never hit the network.
+   */
+  llm?: import('@baton/llm').LLMProvider;
+  /**
+   * Optional content-addressable LLM cache. Defaults to
+   * `path.join(repoRoot, '.baton', 'llm-cache')` in `--full` mode.
+   * Pass `null` to disable caching for this run; pass a constructed
+   * `LLMCache` to use a custom root or size budget.
+   */
+  cache?: import('@baton/llm').LLMCache | null;
 }
 
 export interface CompileWarning {
@@ -70,8 +85,21 @@ export interface CompileResult {
    * rather than scanning `warnings` for `code === 'SCHEMA_INVALID'`.
    */
   valid: boolean;
+  /**
+   * `true` iff at least one extractor made a live (non-cached) LLM
+   * call this run. Cache-only `--full` runs report `false` per
+   * tech-spec §7.4.
+   */
   usedLLM: boolean;
   cacheHits: number;
   cacheMisses: number;
   durationMs: number;
+  /** Total input tokens across all extractor calls this run. */
+  tokensIn?: number;
+  /** Total output tokens across all extractor calls this run. */
+  tokensOut?: number;
+  /** Provider name used (e.g., `"anthropic"`). Empty for fast mode. */
+  llmProvider?: string;
+  /** Model name used (e.g., `"claude-sonnet-4-5"`). Empty for fast mode. */
+  llmModel?: string;
 }

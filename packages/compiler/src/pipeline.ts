@@ -99,10 +99,31 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
 
     const now = new Date().toISOString();
     const ctx = { packetId: opts.packetId, repoCtx, now };
-    const modeResult =
-      opts.mode === 'full'
-        ? modes.runFullMode(input, prior, ctx)
-        : modes.runFastMode(input, prior, ctx);
+    let modeResult: modes.ModeResult;
+    if (opts.mode === 'full') {
+      // Resolve LLM + cache lazily so the fast-mode happy path never
+      // pays for `@baton/llm` imports (CLAUDE.md invariant 2).
+      const { getProvider, LLMCache, defaultCacheRoot } = await import('@baton/llm');
+      const llm = opts.llm ?? (await getProvider({}));
+      const cache =
+        opts.cache === null
+          ? null
+          : opts.cache !== undefined
+            ? opts.cache
+            : new LLMCache({
+                root:
+                  typeof opts.storeRoot === 'string'
+                    ? join(opts.storeRoot, 'llm-cache')
+                    : defaultCacheRoot(),
+              });
+      modeResult = await modes.runFullMode(input, prior, ctx, {
+        llm,
+        cache,
+        ...(opts.signal !== undefined ? { signal: opts.signal } : {}),
+      });
+    } else {
+      modeResult = modes.runFastMode(input, prior, ctx);
+    }
     const assembled = modeResult.packet;
     warnings.push(...modeResult.warnings);
 
@@ -139,15 +160,22 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
       }
     }
 
-    return {
+    const callsLive = modeResult.callsLive ?? 0;
+    const callsCached = modeResult.callsCached ?? 0;
+    const result: CompileResult = {
       packet,
       warnings,
       valid: validation.valid,
-      usedLLM: false,
-      cacheHits: 0,
-      cacheMisses: 0,
+      usedLLM: callsLive > 0,
+      cacheHits: callsCached,
+      cacheMisses: callsLive,
       durationMs: Date.now() - start,
     };
+    if (modeResult.tokensIn !== undefined) result.tokensIn = modeResult.tokensIn;
+    if (modeResult.tokensOut !== undefined) result.tokensOut = modeResult.tokensOut;
+    if (modeResult.provider) result.llmProvider = modeResult.provider;
+    if (modeResult.model) result.llmModel = modeResult.model;
+    return result;
   } finally {
     if (store !== null) store.close();
   }

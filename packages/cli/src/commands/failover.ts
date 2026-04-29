@@ -49,12 +49,8 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
   const target = mapToolToTarget(opts.to);
 
   const mode = opts.full === true ? 'full' : 'fast';
-  if (mode === 'full') {
-    process.stderr.write('failover --full is not implemented until Session 11\n');
-    return 1;
-  }
 
-  const { compile } = await import('@baton/compiler');
+  const { compile, estimateCostUsd } = await import('@baton/compiler');
   const { lint } = await import('@baton/lint');
   const { render } = await import('@baton/render');
   const { collectArtifacts } = await import('./compile.js');
@@ -160,27 +156,70 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
     if (allWarnings.length > 0) process.stderr.write(renderHumanWarnings(allWarnings));
   }
 
+  // Cost block (full mode only). Per tech spec §7.5, mirrors the
+  // shape compile prints. Only the `--full` path can ever produce a
+  // non-zero token count; --fast stays silent.
+  const tokensIn = compileResult.tokensIn ?? 0;
+  const tokensOut = compileResult.tokensOut ?? 0;
+  const provider = compileResult.llmProvider ?? '';
+  const llmModel = compileResult.llmModel ?? '';
+  let costMin: number | undefined;
+  let costMax: number | undefined;
+  if (mode === 'full') {
+    const cost = estimateCostUsd(provider, llmModel, tokensIn, tokensOut);
+    if (cost) {
+      costMin = cost.min;
+      costMax = cost.max;
+    }
+    if (opts.out !== undefined || opts.copy === true) {
+      // Only emit the human cost block when we're not piping the
+      // rendered markdown to stdout — printing extra lines mid-pipe
+      // would corrupt the consumer's input.
+      const totalCalls = compileResult.cacheHits + compileResult.cacheMisses;
+      const lines: string[] = [];
+      lines.push(
+        `LLM calls: ${totalCalls} (${compileResult.cacheHits} cached, ${compileResult.cacheMisses} live)`,
+      );
+      lines.push(
+        `Tokens: ${tokensIn.toLocaleString('en-US')} input / ${tokensOut.toLocaleString('en-US')} output`,
+      );
+      if (cost) {
+        lines.push(
+          `Estimated cost: $${cost.min.toFixed(3)} to $${cost.max.toFixed(3)} (provider: ${provider}, model: ${llmModel})`,
+        );
+      }
+      process.stderr.write(`${lines.join('\n')}\n`);
+    }
+  }
+
   const { logger } = getLogger(repoRoot);
-  logger.info(
-    redactForLog({
-      command: 'failover',
-      mode,
-      exit_code: 0,
-      duration_ms: Date.now() - start,
-      packet_id: packetId,
-      target,
-      llm_calls_live: 0,
-      llm_calls_cached: compileResult.cacheHits,
-      tokens_in: 0,
-      tokens_out: 0,
-      fell_back_to_full: false,
-      shape: {
-        warnings: lintReport.summary.warningCount,
-        artifacts: artifacts.length,
-      },
-    }),
-    'command complete',
-  );
+  // Per CLAUDE.md invariant 2: --fast must never call a live LLM.
+  // If any extractor *did* run live in fast mode, that's the
+  // regression observability hook from tech-spec §12.3.
+  const fellBackToFull = mode === 'fast' && compileResult.cacheMisses > 0;
+  const meta: Parameters<typeof redactForLog>[0] = {
+    command: 'failover',
+    mode,
+    exit_code: 0,
+    duration_ms: Date.now() - start,
+    packet_id: packetId,
+    target,
+    llm_calls_live: compileResult.cacheMisses,
+    llm_calls_cached: compileResult.cacheHits,
+    tokens_in: tokensIn,
+    tokens_out: tokensOut,
+    fell_back_to_full: fellBackToFull,
+    shape: {
+      warnings: lintReport.summary.warningCount,
+      artifacts: artifacts.length,
+    },
+  };
+  if (provider) (meta as { llm_provider?: string }).llm_provider = provider;
+  if (costMin !== undefined)
+    (meta as { estimated_cost_usd_min?: number }).estimated_cost_usd_min = costMin;
+  if (costMax !== undefined)
+    (meta as { estimated_cost_usd_max?: number }).estimated_cost_usd_max = costMax;
+  logger.info(redactForLog(meta), 'command complete');
   return 0;
 }
 

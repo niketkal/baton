@@ -1,3 +1,4 @@
+import type { LLMCache, LLMProvider } from '@baton/llm';
 import { SCHEMA_VERSION } from '@baton/schema';
 import type { ParsedTranscript } from './parsers/types.js';
 import type { RepoContext } from './repo.js';
@@ -28,6 +29,18 @@ export interface ModeContext {
 export interface ModeResult {
   packet: Packet;
   warnings: CompileWarning[];
+  /** Number of live (non-cached) extractor calls. Always 0 in fast mode. */
+  callsLive?: number;
+  /** Number of extractor calls served from the cache. Always 0 in fast mode. */
+  callsCached?: number;
+  /** Total input tokens across extractors. Always 0 in fast mode. */
+  tokensIn?: number;
+  /** Total output tokens across extractors. Always 0 in fast mode. */
+  tokensOut?: number;
+  /** Provider name recorded for cost reporting. Empty in fast mode. */
+  provider?: string;
+  /** Model name recorded for cost reporting. Empty in fast mode. */
+  model?: string;
 }
 
 export function runFastMode(
@@ -124,12 +137,83 @@ export function runFastMode(
   return { packet, warnings };
 }
 
-export function runFullMode(
-  _input: NormalizedInput,
-  _prior: Packet | null,
-  _ctx: ModeContext,
-): ModeResult {
-  throw new Error('full mode not implemented until Session 11');
+export interface FullModeDeps {
+  llm: LLMProvider;
+  cache: LLMCache | null;
+  signal?: AbortSignal | undefined;
+}
+
+/**
+ * `--full` mode: run the deterministic fast-mode assembly first, then
+ * call the four LLM extractors and overwrite the narrative fields with
+ * their output. If the LLM is not configured we keep the fast-mode
+ * draft as-is and emit a `COMPILE_LLM_NOT_CONFIGURED` warning so the
+ * surface contract (calling `--full` ran the LLM path) stays honest.
+ *
+ * Note: extractor imports live in `./extract/full-only.ts` so a
+ * future audit can verify `runFastMode` never pulls them into its
+ * import graph (CLAUDE.md invariant 2).
+ */
+export async function runFullMode(
+  input: NormalizedInput,
+  prior: Packet | null,
+  ctx: ModeContext,
+  deps: FullModeDeps,
+): Promise<ModeResult> {
+  const draft = runFastMode(input, prior, ctx);
+  const warnings: CompileWarning[] = [...draft.warnings];
+
+  if (!deps.llm.isConfigured()) {
+    warnings.push({
+      code: 'COMPILE_LLM_NOT_CONFIGURED',
+      severity: 'warning',
+      message:
+        'compile --full was requested but no LLM provider is configured. Falling back to deterministic fast-mode narrative.',
+      data: { provider: deps.llm.name },
+    });
+    return { ...draft, warnings, callsLive: 0, callsCached: 0, tokensIn: 0, tokensOut: 0 };
+  }
+
+  // Lazy-load the extractor module so `runFastMode`'s callers never
+  // pull this branch's imports (incl. prompt files) into memory.
+  const { runExtractors } = await import('./extract/full-only.js');
+  const result = await runExtractors(
+    input,
+    deps.llm,
+    deps.cache,
+    { draft: draft.packet },
+    deps.signal,
+  );
+
+  warnings.push(...result.warnings);
+
+  // Merge: overwrite narrative fields when the extractor produced a
+  // value; keep the fast-mode draft otherwise.
+  const merged: Packet = { ...draft.packet };
+  if (result.extracted.objective !== undefined) merged.objective = result.extracted.objective;
+  if (result.extracted.next_action !== undefined) merged.next_action = result.extracted.next_action;
+  if (result.extracted.attempts !== undefined) merged.attempts = result.extracted.attempts;
+  if (result.extracted.acceptance_criteria !== undefined) {
+    merged.acceptance_criteria = result.extracted.acceptance_criteria;
+  }
+  // Carry the model's confidence on the objective into the packet's
+  // top-level `confidence_score`. Deliberately a single number; the
+  // schema doesn't surface per-field confidence in v1.
+  if (result.extracted.confidences.objective !== undefined) {
+    merged.confidence_score = result.extracted.confidences.objective;
+  }
+
+  const out: ModeResult = {
+    packet: merged,
+    warnings,
+    callsLive: result.callsLive,
+    callsCached: result.callsCached,
+    tokensIn: result.tokensIn,
+    tokensOut: result.tokensOut,
+    provider: result.provider,
+    model: result.model,
+  };
+  return out;
 }
 
 function deriveTitle(seed: string): string {
