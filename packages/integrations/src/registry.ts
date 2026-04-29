@@ -8,6 +8,8 @@
  */
 
 import { claudeCodeIntegration } from './claude-code/index.js';
+import { codexIntegration } from './codex/index.js';
+import { cursorIntegration } from './cursor/index.js';
 import type { Integration } from './types.js';
 
 const REGISTRY = new Map<string, Integration>();
@@ -24,5 +26,7 @@ export function list(): readonly Integration[] {
   return [...REGISTRY.values()];
 }
 
-// Pre-registration. Codex + Cursor land in Session 15; github-ci is v1.5.
+// Pre-registration. github-ci is v1.5.
 register(claudeCodeIntegration);
+register(codexIntegration);
+register(cursorIntegration);

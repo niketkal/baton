@@ -12,6 +12,10 @@ export {
   InstallFailedError,
 } from './errors.js';
 export { claudeCodeIntegration } from './claude-code/index.js';
+export { codexIntegration } from './codex/index.js';
+export { cursorIntegration } from './cursor/index.js';
+export { runWrapper, runWrapperOnStream } from './codex/wrapper.js';
+export { LIMIT_MARKERS, hasLimitMarker } from './codex/markers.js';
 export type {
   Integration,
   IntegrationMode,
