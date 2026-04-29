@@ -126,10 +126,10 @@ export interface LintReportSummary {
 }
 
 /**
- * Allowed report statuses per docs/spec/lint-rules.md. Note: the
- * `'needs_clarification'` status will be produced by a later session
- * (Session 10) once open-question handling lands; for now the engine only
- * emits `'passed'` or `'failed'`.
+ * Allowed report statuses per docs/spec/lint-rules.md. The
+ * `'needs_clarification'` status is reserved in the type for future use
+ * (e.g., when open-question gating drives a distinct flow); the engine
+ * currently emits only `'passed'` or `'failed'`.
  */
 export type LintReportStatus = 'passed' | 'failed' | 'needs_clarification';
 

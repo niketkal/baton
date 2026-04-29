@@ -71,7 +71,7 @@ export async function runMigrate(opts: MigrateCommandOptions): Promise<number> {
     return 1;
   }
 
-  // Lazy-load the schema migrate module per Session 8 cold-load discipline.
+  // Lazy-load the schema migrate module per CLAUDE.md invariant 2 (cold-load discipline).
   const { migrate } = await import('@baton/schema/migrate');
   const { SCHEMA_VERSION } = await import('@baton/schema');
   const toVersion = opts.to ?? SCHEMA_VERSION;

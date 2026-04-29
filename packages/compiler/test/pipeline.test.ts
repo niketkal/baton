@@ -49,9 +49,8 @@ describe('compile (fast mode)', () => {
     expect(blockingErrors).toHaveLength(0);
     expect(report.status).toBe('passed');
 
-    // Session 9: the assemble step must attach at least one provenance
-    // link so the next session's lint/render passes have something to
-    // anchor against.
+    // The assemble step must attach at least one provenance link so
+    // downstream lint/render passes have something to anchor against.
     expect(result.packet.provenance_links.length).toBeGreaterThan(0);
   });
 
@@ -79,12 +78,12 @@ describe('compile (fast mode)', () => {
       artifacts: [transcriptArtifact],
     });
 
-    // Hand-edit a narrative field via the store to simulate a Session 11
-    // LLM extraction that we want to preserve through fast-mode rebuilds.
+    // Hand-edit a narrative field via the store to simulate an LLM
+    // extraction that we want to preserve through fast-mode rebuilds.
     const store = PacketStore.open(join(tmp, '.baton'));
     try {
       const p = store.read('demo');
-      store.update({ ...p, objective: 'A specific Session-11 derived objective.' });
+      store.update({ ...p, objective: 'A specific LLM-derived objective.' });
     } finally {
       store.close();
     }
@@ -95,7 +94,7 @@ describe('compile (fast mode)', () => {
       mode: 'fast',
       artifacts: [transcriptArtifact],
     });
-    expect(second.packet.objective).toBe('A specific Session-11 derived objective.');
+    expect(second.packet.objective).toBe('A specific LLM-derived objective.');
   });
 
   it('warns and skips unsupported artifact types', async () => {

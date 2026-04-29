@@ -14,17 +14,14 @@ import type {
  * report.
  *
  * Status semantics: presently `'passed'` if `errors[]` is empty, else
- * `'failed'`. The third allowed status `'needs_clarification'` will be
- * produced by Session 10 once open-question gating lands.
+ * `'failed'`. The third allowed status `'needs_clarification'` is reserved
+ * in the type and not yet emitted by the engine.
  *
  * Strict mode: when `opts.strict === true`, a finding from any rule whose
  * `failInStrict` is true is promoted from `warnings[]` to `errors[]`,
- * regardless of the finding's own severity. None of the five rules in
- * this initial set are `warning`-severity-with-`failInStrict:true`, so
- * promotion is a no-op for them; the logic is exercised in Session 10
- * where lower-severity rules with `failInStrict: true` (e.g. BTN031)
- * land. The smoke test in `engine.test.ts` covers it via a synthetic
- * rule.
+ * regardless of the finding's own severity. The logic is exercised by
+ * lower-severity rules with `failInStrict: true` such as BTN031, BTN032,
+ * BTN033, plus a synthetic-rule smoke test in `engine.test.ts`.
  */
 export function lint(
   packet: Packet,

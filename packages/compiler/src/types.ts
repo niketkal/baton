@@ -29,8 +29,8 @@ export interface ArtifactRef {
 
 /**
  * `'fast'` runs the deterministic pipeline without any LLM call. This is
- * the mode `baton failover` uses (CLAUDE.md invariant 2). `'full'` will
- * route through the LLM extractors in Session 11.
+ * the mode `baton failover` uses (CLAUDE.md invariant 2). `'full'` routes
+ * through the LLM extractors in `extract/`.
  */
 export type CompileMode = 'fast' | 'full';
 

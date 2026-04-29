@@ -126,7 +126,7 @@ export function attachProvenanceLinks(packet: Packet, normalized: NormalizedInpu
 
   // Context items: each one's `ref` becomes its own link with no span
   // (the deterministic pass doesn't know which transcript region
-  // motivated it). Session 11's LLM pass will refine spans.
+  // motivated it). The `--full` LLM pass refines spans.
   (packet.context_items ?? []).forEach((item, idx) => {
     pushLink(
       buildLink({

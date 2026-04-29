@@ -22,7 +22,7 @@ export interface ModeContext {
 
 /**
  * In `--fast` mode the assemble step is purely deterministic. We reuse
- * narrative fields from `prior` when present (so a Session 11 LLM
+ * narrative fields from `prior` when present (so a prior `--full` LLM
  * extraction survives subsequent fast-mode rebuilds), and otherwise
  * derive cheap stand-ins from the transcript.
  */
