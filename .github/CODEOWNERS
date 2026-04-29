@@ -1,0 +1,31 @@
+# CODEOWNERS for niketkal/baton
+#
+# Solo-developer setup: @niketkal owns everything; the file exists so
+# that branch-protection's "require review from code owners" rule
+# enforces a final human check on PRs touching the normative public
+# surface (schema, lint rules, CLI contract, ADRs).
+
+# Default: @niketkal reviews everything
+*                                @niketkal
+
+# Normative public surface — extra-careful review on these
+/packages/schema/                @niketkal
+/packages/lint/                  @niketkal
+/docs/spec/                      @niketkal
+/docs/adr/                       @niketkal
+
+# Performance budgets and CI configuration
+/.github/workflows/              @niketkal
+/packages/*/test/performance/    @niketkal
+
+# Conformance suite — public ecosystem asset
+/packages/conformance/           @niketkal
+
+# Release configuration
+/.changeset/config.json          @niketkal
+/homebrew/                       @niketkal
+/CHANGELOG.md                    @niketkal
+
+# Security policy + secret-scrubbing surface
+/SECURITY.md                     @niketkal
+/packages/lint/src/secrets/      @niketkal
