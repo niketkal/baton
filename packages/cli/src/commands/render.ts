@@ -30,7 +30,7 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
   // pulls @baton/render. Keep them off the cold-start path.
   const { render } = await import('@baton/render');
   const { PacketStore } = await import('@baton/store');
-  const store = PacketStore.open(join(repoRoot, '.baton'));
+  const store = PacketStore.open(repoRoot);
   let result: ReturnType<typeof render>;
   try {
     const packet = store.read(opts.packet);

@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import type { Command } from 'commander';
 
 export interface LintCommandOptions {
@@ -17,7 +16,7 @@ export async function runLint(opts: LintCommandOptions): Promise<number> {
   const { lint } = await import('@baton/lint');
   const { PacketStore } = await import('@baton/store');
   const { attachRepo, assessFreshness } = await import('@baton/compiler');
-  const store = PacketStore.open(join(repoRoot, '.baton'));
+  const store = PacketStore.open(repoRoot);
   let report: ReturnType<typeof lint>;
   try {
     const packet = store.read(opts.packet);

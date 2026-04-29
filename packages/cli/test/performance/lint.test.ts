@@ -15,13 +15,9 @@ const PACKET_FIXTURE = resolve(
 );
 
 function seedPacket(repo: string, packetId: string): void {
-  // Files are canonical (CLAUDE.md invariant 1). Note: the CLI lint
-  // command opens PacketStore at `<repo>/.baton`, and resolvePaths()
-  // appends another `.baton`, so packets live at `<repo>/.baton/.baton/
-  // packets/<id>/`. This matches the layout `compile` actually writes
-  // to today (see compile e2e). If that double-`.baton` ever gets
-  // fixed, this seed path needs to change in lockstep.
-  const dir = join(repo, '.baton', '.baton', 'packets', packetId);
+  // Files are canonical (CLAUDE.md invariant 1). Packets live under
+  // `<repo>/.baton/packets/<id>/`.
+  const dir = join(repo, '.baton', 'packets', packetId);
   mkdirSync(dir, { recursive: true });
   const raw = JSON.parse(readFileSync(PACKET_FIXTURE, 'utf8')) as Record<string, unknown>;
   raw.id = packetId;

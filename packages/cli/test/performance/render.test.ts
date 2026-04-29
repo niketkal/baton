@@ -15,8 +15,9 @@ const PACKET_FIXTURE = resolve(
 );
 
 function seedPacket(repo: string, packetId: string): void {
-  // See lint.test.ts seedPacket for why this is `.baton/.baton/packets/`.
-  const dir = join(repo, '.baton', '.baton', 'packets', packetId);
+  // Files are canonical (CLAUDE.md invariant 1). Packets live under
+  // `<repo>/.baton/packets/<id>/`.
+  const dir = join(repo, '.baton', 'packets', packetId);
   mkdirSync(dir, { recursive: true });
   const raw = JSON.parse(readFileSync(PACKET_FIXTURE, 'utf8')) as Record<string, unknown>;
   raw.id = packetId;
