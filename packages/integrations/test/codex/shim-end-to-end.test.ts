@@ -19,7 +19,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const CLI_BIN = resolve(REPO_ROOT, 'packages', 'cli', 'dist', 'bin.js');
 
-describe('codex shim end-to-end via built CLI', () => {
+// The codex wrapper-launcher is POSIX-only per tech spec §8.2 (the shim
+// is a bash script). Spawning a mock codex via PATH on Windows would
+// require a .cmd/.exe wrapper and significantly different test plumbing.
+// The wrapper itself is unit-tested cross-platform; this test only
+// validates the bin -> internal codex-wrap path which is exercised the
+// same way on POSIX.
+describe.skipIf(process.platform === 'win32')('codex shim end-to-end via built CLI', () => {
   let workdir: string;
 
   beforeAll(() => {
