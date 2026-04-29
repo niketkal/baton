@@ -32,12 +32,12 @@
 | 10 | BTN010–BTN040 (repo-context, freshness, AC, provenance per canonical doc) | ✅ `37ce974` (PR #3 squashed, wave 1 parallel) |
 | 11 | LLM extraction prompts (objective, attempts, AC, next-action) + cost reporting | ✅ `b69e0ca` (PR #8 squashed, wave 3 parallel) |
 | 12 | Renderers: codex + cursor + snapshot tests + token estimation | ✅ `c0231b5` (PR #2 squashed, wave 1 parallel) |
-| 13 | Repo awareness: git refs, dirty-state, freshness scoring | ⏳ |
+| 13 | Repo awareness: git refs, dirty-state, freshness scoring | ✅ `d592562` (PR #12 squashed, wave 4 parallel) |
 | 14 | `@baton/integrations/claude-code` native hook + `baton init`/`uninstall` | ✅ `6cab9a4` (PR #6 squashed, wave 2 parallel) |
 | 15 | `@baton/integrations/codex` wrapper launcher + Cursor paste flow + `baton outcome` | ✅ `e1e5f6e` (PR #9 squashed, wave 3 parallel) |
-| 16 | BTN041–BTN050 dispatch-gating rules + `baton dispatch` + `baton history` | ⏳ |
+| 16 | BTN041–BTN050 dispatch-gating rules + `baton dispatch` + `baton history` | ✅ `1761bf3` (PR #13 squashed, wave 4 parallel) |
 | 17 | `@baton/conformance` — runner + 5–10 reference cases | ✅ `4298130` (PR #11 squashed, wave 3 parallel) |
-| 18 | Performance budgets in CI + `baton failover` end-to-end + cold-start optimization | ⏳ |
+| 18 | Performance budgets in CI + `baton failover` end-to-end + cold-start optimization | ✅ `8cfbcf2` (PR #14 squashed, wave 4 parallel) |
 | 19 | `baton migrate` skeleton + Homebrew formula + npm publish workflow | ✅ `ee5b045` (PR #5 squashed, wave 2 parallel) |
 | 20 | Docs polish: README, CONTRIBUTING, 4 contributor guides, ADRs 0001–0010 | ✅ `93e36cb` (PR #10 squashed, wave 3 parallel) |
 
