@@ -33,10 +33,12 @@ cd baton
 pnpm install
 pnpm -r build
 
-# 2. Run the CLI directly
+# 2. Run the CLI directly (prints `0.0.0` until v1.0.0 is tagged)
 node packages/cli/dist/bin.js --version
 
-# 3. (Optional) Symlink as `baton` on your PATH
+# 3. (Optional, macOS/Linux) Symlink as `baton` on your PATH.
+# On Windows, invoke `node packages\cli\dist\bin.js` directly or
+# create a `.cmd` shim that does the same.
 ln -s "$(pwd)/packages/cli/dist/bin.js" /usr/local/bin/baton
 chmod +x /usr/local/bin/baton
 
@@ -62,14 +64,12 @@ v1.0.0 is published.
 - `baton lint` / `baton lint --strict` — certification rules (BTN001–BTN060)
 - `baton render` — target-specific output for Claude Code, Codex, Cursor, or
   generic markdown
-- `baton dispatch` / `baton outcome ingest` — close the loop *(planned)*
+- `baton dispatch` / `baton outcome ingest` — close the loop
 - `baton status` / `baton history` — inspect a packet's current state and
-  past versions, dispatches, and outcomes *(planned)*
+  past versions, dispatches, and outcomes
 - `baton conformance` — public test suite anyone can run against an
-  implementation that claims Baton compatibility *(planned)*
-
-*Planned* commands are specified in the CLI contract but not yet in the
-shipped CLI; tracking issues are filed against the v1.0 milestone.
+  implementation that claims Baton compatibility
+- `baton migrate` — schema migration runner (no-op v1→v1 today)
 
 Bring your own LLM key (Anthropic or OpenAI in v1). The CLI does not phone
 home; logs are local and redacted by default.
@@ -83,7 +83,7 @@ home; logs are local and redacted by default.
 - [Architecture Decision Records](docs/adr/)
 - [Contributor guides](docs/guides/)
 - [Contributing](CONTRIBUTING.md)
-- Security policy — see `SECURITY.md` (forthcoming)
+- [Security policy](SECURITY.md)
 - Code of conduct — see `CODE_OF_CONDUCT.md` (forthcoming)
 
 ## License

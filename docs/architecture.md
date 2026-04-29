@@ -170,7 +170,6 @@ baton/
 │   ├── spec/                       # CLI contract, lint rules, packet schema
 │   ├── adr/                        # Architecture Decision Records
 │   └── guides/                     # contributor walk-throughs
-├── examples/
 └── homebrew/
 ```
 
@@ -187,11 +186,12 @@ Source of truth for the packet schema and the TypeScript types derived from
 it.
 
 - `packet.schema.json` — the normative schema, CC0-licensed
-- `index.ts` — exports types generated from the schema via
+- `index.ts` — re-exports the generated types, the Ajv-backed
+  `validatePacket()`, and `SCHEMA_VERSION`
+- `types.ts` — TypeScript types generated from the schema via
   `json-schema-to-typescript`
-- `validate.ts` — exports an Ajv-backed validator
-- `version.ts` — `SCHEMA_VERSION = 'baton.packet/v1'` and the supported list
-  (current + n-1, so `baton migrate` knows what to read)
+- `migrate.ts` + `migrations/` — schema migration runner driven by
+  `baton migrate`
 
 Schema is the source of truth; types are generated. Never hand-edit the
 generated types. See ADR [0010](adr/0010-schema-license-cc0.md) for the
@@ -222,7 +222,8 @@ Repo-local persistence.
   `provenance.json`, and `exports/` / `outcomes/`.
 - SQLite (`state.db`) is an index and a cache, regenerable by walking the
   file tree.
-- `db.ts`, `packets.ts`, `artifacts.ts`, `history.ts`, `migrations/`.
+- `store.ts`, `db.ts`, `files.ts`, `paths.ts`, `markdown.ts`,
+  `markdown-readonly.ts`, `migrations.ts`.
 
 This layout means `git diff` on `.baton/packets/<id>/` shows the meaningful
 change, `cp -r` is a valid backup, and a missing `state.db` is recoverable.
@@ -256,9 +257,10 @@ The artifact → packet pipeline.
 - `parsers/` — one parser per artifact type (`transcript`, `log`, `diff`,
   `issue`, `note`, `image`, `test-report`)
 - `extract/` — LLM-backed field extractors
-- `repo.ts` — git ref resolution, dirty-state detection, file existence
+- `repo.ts` — git ref resolution, dirty-state detection, sandboxed file
+  existence accessor (used by BTN012/013/014 via `LintContext`)
 - `freshness.ts` — stale-context detection per BTN014
-- `tokens.ts` — token estimation across the packet
+- `provenance.ts` — span attribution back into source artifacts
 - `modes.ts` — `--fast` (deterministic + cache) vs `--full`
 
 ### `@baton/render`
@@ -332,12 +334,12 @@ See ADR [0009](adr/0009-conformance-as-public-asset.md).
 
 User-facing entry point.
 
-- `bin/baton.ts` — shebang entry, sets up logger, dispatches to commands
+- `bin.ts` — shebang entry, sets up logger, dispatches to commands
 - `commands/init.ts`, `uninstall.ts`, `compile.ts`, `failover.ts`, `lint.ts`,
-  `render.ts`, `ingest.ts`, `migrate.ts` — currently shipped
-- *Planned (v1.x):* `dispatch.ts`, `outcome.ts`, `status.ts`, `history.ts`,
-  `conformance.ts` — specified in the CLI contract; tracking issues are
-  open against the v1.0 milestone
+  `render.ts`, `ingest.ts`, `migrate.ts`, `dispatch.ts`, `outcome.ts`,
+  `status.ts`, `history.ts`, `conformance.ts`
+- `commands/internal.ts` — `baton internal codex-wrap` (used by the
+  `baton-codex` shim; not user-facing)
 - `output/` — human and JSON renderers; `redactForLog()` lives here
 - `config.ts` — loads and validates `.baton/config.toml`
 
