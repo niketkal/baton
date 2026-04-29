@@ -13,6 +13,13 @@ export interface DetectResult {
   installed: boolean;
   version?: string;
   reason?: string;
+  /**
+   * Resolved absolute path to the binary, or the bare name when the
+   * binary was found via the host PATH. Consumers (e.g. wrappers) use
+   * this to spawn the same binary detection landed on, which matters
+   * when only an off-PATH desktop-app install exists.
+   */
+  path?: string;
 }
 
 export interface InstallOpts {
