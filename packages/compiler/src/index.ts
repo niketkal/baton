@@ -16,6 +16,8 @@ export {
   type TranscriptRole,
 } from './parsers/index.js';
 export { attachProvenanceLinks } from './provenance.js';
+export { attachRepo, type AttachRepoOptions, type RepoContext } from './repo.js';
+export { assessFreshness, type FreshnessAssessment } from './freshness.js';
 export {
   computeSpan,
   unionSpans,
