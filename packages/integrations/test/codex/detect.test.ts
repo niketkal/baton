@@ -2,7 +2,7 @@ import type { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __setSpawnForTests, detect } from '../../src/codex/detect.js';
 
 type SpawnFn = typeof spawnSync;
@@ -62,7 +62,21 @@ afterEach(() => {
   else process.env.BATON_CODEX_BIN = originalEnv.BATON_CODEX_BIN;
 });
 
+// Pin platform to a non-win32 value for the POSIX-shaped tests in this
+// describe block. The mocks below match on bare `codex` (not `codex.exe`),
+// and on Windows runners detect() would otherwise probe `codex.exe` first
+// and break the mock-call sequence. Inner `Windows platform` describes
+// override per-test and restore to this pinned value.
+const originalPlatformForSuite = process.platform;
+
 describe('codex detect', () => {
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatformForSuite });
+  });
+
   it('returns installed=true with bare path when PATH lookup succeeds', async () => {
     __setSpawnForTests(
       mockSpawn([

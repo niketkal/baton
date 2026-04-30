@@ -2,7 +2,7 @@ import type { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __setSpawnForTests, detect } from '../../src/claude-code/detect.js';
 
 type SpawnFn = typeof spawnSync;
@@ -56,7 +56,20 @@ afterEach(() => {
   else process.env.BATON_CLAUDE_BIN = originalEnv.BATON_CLAUDE_BIN;
 });
 
+// Pin platform to a non-win32 value for the POSIX-shaped tests in this
+// describe. Mocks match on bare `claude`; on Windows runners detect()
+// would otherwise probe `claude.exe` first and break the mock-call
+// sequence. Inner `Windows platform` describes override per-test.
+const originalPlatformForSuite = process.platform;
+
 describe('claude-code detect', () => {
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatformForSuite });
+  });
+
   it('returns installed=true with parsed semver when claude --version succeeds', async () => {
     __setSpawnForTests(
       mockSpawn([{ matchPath: (p) => p === 'claude', result: versionOk('claude 2.4.1\n') }]),

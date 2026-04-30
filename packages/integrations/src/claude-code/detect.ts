@@ -78,6 +78,10 @@ async function tryPathLookup(): Promise<
         encoding: 'utf8',
         timeout: 5_000,
         windowsHide: true,
+        // On Windows, `.cmd`/`.bat` shims aren't directly executable via
+        // spawn (Node blocks them). Going through cmd.exe lets PATHEXT
+        // resolve a bare-name lookup to a `.cmd` shim. Args are static.
+        shell: process.platform === 'win32',
       });
     } catch {
       spawnThrew = true;
