@@ -19,7 +19,7 @@ We will:
 
 In scope:
 
-- The `@baton/*` npm packages
+- The `@batonai/*` npm packages
 - The `baton` CLI binary
 - The packet schema and lint rules (if a rule's logic enables an
   injection or bypass)

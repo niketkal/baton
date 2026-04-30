@@ -100,7 +100,7 @@ needed.
 ## 7. Tests
 
 ```bash
-pnpm --filter @baton/render test
+pnpm --filter @batonai/render test
 ```
 
 The renderer must:

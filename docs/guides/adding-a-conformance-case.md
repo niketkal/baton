@@ -61,7 +61,7 @@ before the test.
 ## 4. Run the suite locally
 
 ```bash
-pnpm --filter @baton/conformance test
+pnpm --filter @batonai/conformance test
 ```
 
 The runner picks up every `*.json` under `cases/` automatically. If the
@@ -95,7 +95,7 @@ elsewhere.
 The same suite runs against external implementations:
 
 ```bash
-npx @baton/conformance --against ./my-bin
+npx @batonai/conformance --against ./my-bin
 ```
 
 Cases you add automatically apply to anyone running the suite against

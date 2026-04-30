@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import type { RenderTarget } from '@baton/render';
+import type { RenderTarget } from '@batonai/render';
 import type { Command } from 'commander';
 
 const RENDER_TARGETS: RenderTarget[] = ['generic', 'claude-code', 'codex', 'cursor'];
@@ -50,9 +50,9 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
 
   const mode = opts.full === true ? 'full' : 'fast';
 
-  const { compile, estimateCostUsd } = await import('@baton/compiler');
-  const { lint } = await import('@baton/lint');
-  const { render } = await import('@baton/render');
+  const { compile, estimateCostUsd } = await import('@batonai/compiler');
+  const { lint } = await import('@batonai/lint');
+  const { render } = await import('@batonai/render');
   const { collectArtifacts } = await import('./compile.js');
   const { renderHumanResult, renderHumanWarnings } = await import('../output/human.js');
   const { getLogger } = await import('../output/logger.js');

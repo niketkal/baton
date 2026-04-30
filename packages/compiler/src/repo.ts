@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync as fsExistsSync } from 'node:fs';
 import { isAbsolute, join, normalize, sep } from 'node:path';
-import type { LintFsAccessor, LintGitRefResolver } from '@baton/lint';
+import type { LintFsAccessor, LintGitRefResolver } from '@batonai/lint';
 
 /**
  * RepoContext is the compiler's view of the repo at compile time. It is

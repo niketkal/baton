@@ -1,4 +1,4 @@
-# @baton/conformance
+# @batonai/conformance
 
 Public conformance suite for Baton-compatible CLIs. Synthetic
 fixtures only — no real partner transcripts (see CLAUDE.md
@@ -7,7 +7,7 @@ invariant 5 / tech spec §10.2).
 ## Running against a local CLI build
 
 ```sh
-pnpm --filter @baton/conformance build
+pnpm --filter @batonai/conformance build
 node packages/conformance/dist/bin/baton-conformance.js \
   --against packages/cli/dist/bin.js
 ```
@@ -21,7 +21,7 @@ baton conformance
 ## Running against a third-party packaging
 
 ```sh
-npx @baton/conformance --against /path/to/their-baton-cli.js
+npx @batonai/conformance --against /path/to/their-baton-cli.js
 ```
 
 ## What the runner does

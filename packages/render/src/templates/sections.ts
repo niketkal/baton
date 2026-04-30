@@ -1,4 +1,4 @@
-import { roughEstimate } from '@baton/llm';
+import { roughEstimate } from '@batonai/llm';
 import type {
   AcceptanceCriterion,
   Attempt,
@@ -7,7 +7,7 @@ import type {
   OpenQuestion,
   ProvenanceLink,
   RepoContext,
-} from '@baton/schema';
+} from '@batonai/schema';
 import type { RenderOptions } from '../types.js';
 
 function escapeCell(s: string): string {

@@ -28,7 +28,7 @@ describe('cli uninstall', () => {
   });
 
   it('removes a previously-installed claude-code integration', async () => {
-    const integrations = await import('@baton/integrations');
+    const integrations = await import('@batonai/integrations');
     const { __setSpawnForTests } = await import('../../../integrations/src/claude-code/detect.js');
     __setSpawnForTests((() => ({
       pid: 0,

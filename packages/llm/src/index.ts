@@ -1,5 +1,5 @@
 /**
- * Public entrypoint for `@baton/llm`. Consumers should always go through
+ * Public entrypoint for `@batonai/llm`. Consumers should always go through
  * `getProvider()`; the per-provider implementations are intentionally
  * NOT re-exported here so the registry stays the single seam and so the
  * heavy SDK modules can stay lazy.

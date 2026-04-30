@@ -30,13 +30,13 @@ export async function runUninstall(
   const start = Date.now();
   const repoRoot = opts.repo ?? process.cwd();
 
-  const integrations = await import('@baton/integrations');
+  const integrations = await import('@batonai/integrations');
   const { getIntegration } = integrations;
 
   const ids: string[] = [];
   if (opts.all === true) {
     // We need the list of installed ids. The cleanest source is the
-    // manifest file. Read it through @baton/integrations' status()
+    // manifest file. Read it through @batonai/integrations' status()
     // probes by enumerating registered integrations.
     for (const i of integrations.listIntegrations()) {
       const s = await i.status({ repoRoot });

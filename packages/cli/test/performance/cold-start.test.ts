@@ -31,7 +31,7 @@ describe('cold-start performance', () => {
 
   it('runs --version under the cold-start budget', () => {
     if (!existsSync(BIN)) {
-      throw new Error(`expected built bin at ${BIN}; run pnpm --filter @baton/cli build`);
+      throw new Error(`expected built bin at ${BIN}; run pnpm --filter @batonai/cli build`);
     }
     // No warm-up: the prior version of this test discarded a first
     // invocation, which by definition makes the second one not a cold
@@ -58,7 +58,7 @@ describe('cold-start performance', () => {
     'does NOT load better-sqlite3 for `baton --version`',
     async () => {
       // Regression for the Fix 2 lazy-load contract. If a future change
-      // re-introduces a top-level `import '@baton/store'` (or anything
+      // re-introduces a top-level `import '@batonai/store'` (or anything
       // that pulls in the native binding), this test will flag it.
       //
       // Strategy: dynamic-import the built bin from a small probe script

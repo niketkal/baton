@@ -1,5 +1,5 @@
 {
-  "name": "@baton/render",
+  "name": "@batonai/render",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton target-specific renderers (claude-code, codex, cursor, generic).",
@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/llm": "workspace:*",
-    "@baton/schema": "workspace:*"
+    "@batonai/llm": "workspace:*",
+    "@batonai/schema": "workspace:*"
   }
 }

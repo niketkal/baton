@@ -38,9 +38,9 @@ users without Node installed get a single-tool experience."
 
 Three install paths, in priority order:
 
-1. **`npx @baton/cli failover ...`** — fastest first-use trial. Cold-
+1. **`npx @batonai/cli failover ...`** — fastest first-use trial. Cold-
    start budget < 5s on a cold npm cache, enforced in CI.
-2. **`npm install -g @baton/cli`** — stable daily-driver install. Ships
+2. **`npm install -g @batonai/cli`** — stable daily-driver install. Ships
    with v1.0.0.
 3. **`brew install baton`** — secondary stable install for users without
    a Node install. Ships **shortly after v1.0.0** stabilizes; the formula
@@ -53,7 +53,7 @@ Single-binary distribution via Node SEA or `pkg` is **deferred** to
 post-v1. The npm and brew paths cover the user audience for the OSS
 launch.
 
-`@baton/cli` is the published package. Its bin entry is `baton`. LLM
+`@batonai/cli` is the published package. Its bin entry is `baton`. LLM
 provider SDKs are optional peer dependencies so users only install the
 SDK for the provider they actually use.
 

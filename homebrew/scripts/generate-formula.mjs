@@ -3,7 +3,7 @@
  * Release-time generator for the Baton Homebrew formula.
  *
  * Reads packages/cli/package.json for the version, fetches the published
- * npm tarball at https://registry.npmjs.org/@baton/cli/-/cli-<version>.tgz,
+ * npm tarball at https://registry.npmjs.org/@batonai/cli/-/cli-<version>.tgz,
  * computes its sha256, and writes the resolved formula to homebrew/baton.rb.
  *
  * Run order in .github/workflows/release.yml (per the github-setup doc):
@@ -33,7 +33,7 @@ async function main() {
   if (typeof version !== 'string' || version.length === 0) {
     throw new Error('packages/cli/package.json has no version field');
   }
-  const tarballUrl = `https://registry.npmjs.org/@baton/cli/-/cli-${version}.tgz`;
+  const tarballUrl = `https://registry.npmjs.org/@batonai/cli/-/cli-${version}.tgz`;
 
   let sha256;
   if (dryRun) {

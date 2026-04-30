@@ -1,4 +1,4 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 import { READONLY_CLOSE, READONLY_OPEN, extractReadonlyBlocks } from './markdown.js';
 
 /**

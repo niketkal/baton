@@ -10,7 +10,12 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type CompleteOptions, type CompleteResult, LLMCache, type LLMProvider } from '@baton/llm';
+import {
+  type CompleteOptions,
+  type CompleteResult,
+  LLMCache,
+  type LLMProvider,
+} from '@batonai/llm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCompile } from '../../src/commands/compile.js';
 import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';

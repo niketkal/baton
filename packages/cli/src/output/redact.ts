@@ -1,4 +1,4 @@
-import { detectSecrets } from '@baton/lint';
+import { detectSecrets } from '@batonai/lint';
 
 /**
  * Allowed metadata fields that may be logged at default log levels.

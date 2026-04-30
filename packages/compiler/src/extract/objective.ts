@@ -5,7 +5,7 @@
  * Output: `{ objective, confidence }`.
  */
 
-import type { LLMCache, LLMProvider } from '@baton/llm';
+import type { LLMCache, LLMProvider } from '@batonai/llm';
 import type { NormalizedInput } from '../modes.js';
 import { renderPrompt } from './prompts.js';
 import { runPrompt } from './runner.js';

@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION } from '@baton/schema';
+import { SCHEMA_VERSION } from '@batonai/schema';
 import type { LintRule } from '../types.js';
 
 /**

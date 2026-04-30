@@ -15,7 +15,7 @@ generator that fills in the npm tarball URL and sha256.
 
 The release pipeline (`.github/workflows/release.yml`) runs:
 
-1. `pnpm changeset publish --provenance` — publishes `@baton/cli` to npm with
+1. `pnpm changeset publish --provenance` — publishes `@batonai/cli` to npm with
    OIDC trusted publishing + provenance attestation.
 2. `node homebrew/scripts/generate-formula.mjs` — resolves the formula against
    the just-published tarball.

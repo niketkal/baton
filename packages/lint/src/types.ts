@@ -1,4 +1,4 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 
 /**
  * Re-export the canonical packet type under a shorter local alias used

@@ -3,8 +3,8 @@
 //
 // Cold-start discipline: each command module's top-level import surface is
 // limited to types (`import type`) plus commander + pure utility modules.
-// Heavy modules — `@baton/compiler`, `@baton/render`, `@baton/lint`,
-// `@baton/store` (which transitively loads `better-sqlite3` native binding) —
+// Heavy modules — `@batonai/compiler`, `@batonai/render`, `@batonai/lint`,
+// `@batonai/store` (which transitively loads `better-sqlite3` native binding) —
 // must only be reached via `await import()` inside command handler bodies.
 // See test/performance/cold-start.test.ts for the regression check.
 import type { Command } from 'commander';

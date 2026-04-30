@@ -14,7 +14,7 @@
  * would be worse than re-attempting next run).
  */
 
-import { type LLMCache, type LLMProvider, cacheKey as deriveCacheKey } from '@baton/llm';
+import { type LLMCache, type LLMProvider, cacheKey as deriveCacheKey } from '@batonai/llm';
 import type { CompileWarning } from '../types.js';
 import type { ExtractResult } from './types.js';
 

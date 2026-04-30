@@ -1,6 +1,6 @@
 /**
  * Verifies the npx cold-start invariant from CLAUDE.md / tech spec §9.2:
- * importing `@baton/llm` (or any registry-only path) must NOT eagerly pull
+ * importing `@batonai/llm` (or any registry-only path) must NOT eagerly pull
  * `@anthropic-ai/sdk`, `openai`, `@anthropic-ai/tokenizer`, or `js-tiktoken`
  * into Node's module cache. They are optional peer deps and add hundreds of
  * milliseconds to startup.
@@ -99,7 +99,7 @@ describe('lazy-loading discipline', () => {
     const distRoot = path.join(PKG_ROOT, 'dist');
     if (!existsSync(distRoot)) {
       // Build on demand. Slow path — usually CI runs build before test.
-      execSync('pnpm --filter @baton/llm build', {
+      execSync('pnpm --filter @batonai/llm build', {
         cwd: path.resolve(PKG_ROOT, '..', '..'),
         stdio: 'inherit',
       });

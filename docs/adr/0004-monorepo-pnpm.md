@@ -7,8 +7,8 @@
 
 Baton is logically nine packages plus the CLI entry point. They share
 types (the packet schema), test utilities, and tooling. They also evolve
-together: a schema change typically lands across `@baton/schema`,
-`@baton/lint`, `@baton/compiler`, and `@baton/cli` in one PR.
+together: a schema change typically lands across `@batonai/schema`,
+`@batonai/lint`, `@batonai/compiler`, and `@batonai/cli` in one PR.
 
 Two repo shapes were considered:
 
@@ -25,7 +25,7 @@ Within monorepo, the package-manager choice was between `npm` workspaces,
 - strict, per-package `node_modules` layout (catches accidental
   cross-package imports that bypass the public surface)
 - speed on large dependency graphs
-- reliable workspace filter syntax (`pnpm --filter @baton/lint test`)
+- reliable workspace filter syntax (`pnpm --filter @batonai/lint test`)
 - `corepack` support for pinned versions
 
 ## Decision
@@ -62,8 +62,8 @@ Never use `npm install` or `yarn` in this repo. The lockfile is
 Positive:
 
 - Atomic cross-package changes (e.g. schema + lint + compiler in one PR).
-- Strict isolation catches accidental imports; if `@baton/lint` imports
-  from `@baton/store` without declaring it, the build fails.
+- Strict isolation catches accidental imports; if `@batonai/lint` imports
+  from `@batonai/store` without declaring it, the build fails.
 - `pnpm --filter` makes per-package CI shards cheap.
 - Single CI matrix for tests, lint, build, conformance, and
   performance-budget checks.

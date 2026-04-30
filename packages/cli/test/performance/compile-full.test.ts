@@ -1,7 +1,12 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { type CompleteOptions, type CompleteResult, LLMCache, type LLMProvider } from '@baton/llm';
+import {
+  type CompleteOptions,
+  type CompleteResult,
+  LLMCache,
+  type LLMProvider,
+} from '@batonai/llm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCompile } from '../../src/commands/compile.js';
 import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';

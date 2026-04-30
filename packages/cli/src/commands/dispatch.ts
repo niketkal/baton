@@ -114,9 +114,9 @@ export async function runDispatch(opts: DispatchOptions): Promise<number> {
   }
 
   // Lazy: PacketStore drags better-sqlite3 (native binding); render
-  // pulls @baton/render. Keep them off the cold-start path.
-  const { render } = await import('@baton/render');
-  const { PacketStore } = await import('@baton/store');
+  // pulls @batonai/render. Keep them off the cold-start path.
+  const { render } = await import('@batonai/render');
+  const { PacketStore } = await import('@batonai/store');
   const store = PacketStore.open(repoRoot);
   let markdown: string;
   try {

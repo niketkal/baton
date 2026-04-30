@@ -39,7 +39,7 @@ Use **vitest** as the single test runner across all packages.
 - Per-package configs extend a shared `vitest.config.ts` at the root.
 - Snapshots live next to the tests under `packages/render/test/snapshots/`
   and similar.
-- `pnpm -r test` runs the whole repo; `pnpm --filter @baton/<pkg> test`
+- `pnpm -r test` runs the whole repo; `pnpm --filter @batonai/<pkg> test`
   runs one package.
 - A custom matcher enforces performance budgets on hot paths.
 

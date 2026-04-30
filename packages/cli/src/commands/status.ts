@@ -11,7 +11,7 @@ import type { Command } from 'commander';
  *     validation_level, and last-modified timestamp.
  *
  * Cold-start discipline: top-level imports are limited to the
- * commander type. `@baton/store` (which transitively pulls
+ * commander type. `@batonai/store` (which transitively pulls
  * better-sqlite3) and node:fs/node:path are imported lazily inside
  * the handler.
  *
@@ -121,7 +121,7 @@ function readJsonl<T>(path: string, fs: { readFileSync(p: string, enc: 'utf8'): 
 export async function buildStatusReport(opts: StatusOptions): Promise<StatusReport> {
   const { join } = await import('node:path');
   const { readFileSync } = await import('node:fs');
-  const { PacketStore } = await import('@baton/store');
+  const { PacketStore } = await import('@batonai/store');
   const repoRoot = opts.repo ?? process.cwd();
   const batonDir = join(repoRoot, '.baton');
   const store = PacketStore.open(repoRoot);

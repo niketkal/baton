@@ -1,5 +1,5 @@
-import { roughEstimate } from '@baton/llm';
-import type { BatonPacket } from '@baton/schema';
+import { roughEstimate } from '@batonai/llm';
+import type { BatonPacket } from '@batonai/schema';
 import {
   resolveContextLimit,
   sectionAcceptanceCriteria,

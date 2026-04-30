@@ -63,7 +63,7 @@ describe('codex shim end-to-end via built CLI', () => {
 
   beforeAll(() => {
     if (!existsSync(CLI_BIN)) {
-      throw new Error(`expected built bin at ${CLI_BIN}; run pnpm --filter @baton/cli build`);
+      throw new Error(`expected built bin at ${CLI_BIN}; run pnpm --filter @batonai/cli build`);
     }
   });
 

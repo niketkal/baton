@@ -1,4 +1,4 @@
-import type { PacketStore } from '@baton/store';
+import type { PacketStore } from '@batonai/store';
 import type { CompileWarning, Packet } from './types.js';
 
 export interface PriorPacketResult {

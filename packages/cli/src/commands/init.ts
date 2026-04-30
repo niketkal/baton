@@ -41,7 +41,7 @@ export async function runInit(opts: InitOptions): Promise<number> {
   const subdirs = ['packets', 'artifacts', 'history', 'logs', 'integrations'];
 
   // Lazy-load: keep cold start cheap.
-  const { listIntegrations, getIntegration } = await import('@baton/integrations');
+  const { listIntegrations, getIntegration } = await import('@batonai/integrations');
 
   if (opts.dryRun !== true) {
     mkdirSync(batonDir, { recursive: true });

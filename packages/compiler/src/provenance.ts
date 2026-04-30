@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ProvenanceLink, SourceArtifact } from '@baton/schema';
+import type { ProvenanceLink, SourceArtifact } from '@batonai/schema';
 import type { NormalizedInput } from './modes.js';
 import type { ParsedTranscript } from './parsers/types.js';
 import type { Packet } from './types.js';

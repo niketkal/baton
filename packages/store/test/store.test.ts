@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Warning } from '@baton/schema';
+import type { Warning } from '@batonai/schema';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   BATON_DIR,

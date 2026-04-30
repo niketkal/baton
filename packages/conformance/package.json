@@ -1,5 +1,5 @@
 {
-  "name": "@baton/conformance",
+  "name": "@batonai/conformance",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton public conformance suite (synthetic fixtures only).",
@@ -22,9 +22,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/lint": "workspace:*",
-    "@baton/render": "workspace:*",
-    "@baton/schema": "workspace:*",
+    "@batonai/lint": "workspace:*",
+    "@batonai/render": "workspace:*",
+    "@batonai/schema": "workspace:*",
     "commander": "12.1.0"
   }
 }

@@ -93,7 +93,7 @@ entries.
 ## 5. Run the tests
 
 ```bash
-pnpm --filter @baton/lint test
+pnpm --filter @batonai/lint test
 ```
 
 The fixture loader will pick up the new directory automatically. If the

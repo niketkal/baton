@@ -1,5 +1,5 @@
 /**
- * Public API for `@baton/integrations`. Per-tool installer abstraction
+ * Public API for `@batonai/integrations`. Per-tool installer abstraction
  * + the registered integrations themselves. Imports must remain cheap:
  * the CLI cold-start path imports this module to enumerate integrations
  * during `baton init`.

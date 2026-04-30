@@ -25,7 +25,7 @@ describe('ingest', () => {
 
   beforeAll(() => {
     if (!existsSync(BIN)) {
-      throw new Error(`expected built bin at ${BIN}; run pnpm --filter @baton/cli build`);
+      throw new Error(`expected built bin at ${BIN}; run pnpm --filter @batonai/cli build`);
     }
   });
 

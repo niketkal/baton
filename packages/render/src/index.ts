@@ -1,4 +1,4 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 import { claudeCodeRenderer } from './targets/claude-code.js';
 import { codexRenderer } from './targets/codex.js';
 import { cursorRenderer } from './targets/cursor.js';

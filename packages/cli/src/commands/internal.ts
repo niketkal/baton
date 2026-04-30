@@ -3,7 +3,7 @@
 // output but not surfaced in user-facing docs.
 //
 // Cold-start discipline (CLAUDE.md / cold-start regression test): the heavy
-// `@baton/integrations` module is reached only via `await import()` inside the
+// `@batonai/integrations` module is reached only via `await import()` inside the
 // action handler. The top-level surface here is `commander` types only.
 import type { Command } from 'commander';
 
@@ -20,7 +20,7 @@ export function registerInternal(program: Command): void {
     .allowExcessArguments(true)
     .action(async (_options, cmd: Command) => {
       // Lazy-load to keep cold-start of `baton --version` fast.
-      const { runWrapper } = await import('@baton/integrations');
+      const { runWrapper } = await import('@batonai/integrations');
       // commander gives us positional args + (with allowUnknownOption) any
       // unknown flags in cmd.args. That's exactly what we want to forward
       // verbatim to the codex subprocess.

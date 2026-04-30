@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as schemaModule from '@baton/schema';
+import * as schemaModule from '@batonai/schema';
 import { describe, expect, it, vi } from 'vitest';
 import { lint } from '../src/engine.js';
 import { BTN002 } from '../src/rules/BTN002-packet-schema-valid.js';

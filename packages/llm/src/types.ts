@@ -1,5 +1,5 @@
 /**
- * Public types for the @baton/llm package.
+ * Public types for the @batonai/llm package.
  *
  * The provider abstraction is BYOK (bring-your-own-key). Consumers use
  * `getProvider(config)` from the registry rather than importing a provider

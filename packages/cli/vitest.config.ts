@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 // tech spec §11; they take ~30-60s end-to-end. Keeping them out of the
 // default `pnpm test` keeps the inner-loop fast (~1-2s).
 //
-// Run perf budgets explicitly via `pnpm --filter @baton/cli test:performance`,
+// Run perf budgets explicitly via `pnpm --filter @batonai/cli test:performance`,
 // which uses a separate config (`vitest.performance.config.ts`).
 export default defineConfig({
   test: {

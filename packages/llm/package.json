@@ -1,5 +1,5 @@
 {
-  "name": "@baton/llm",
+  "name": "@batonai/llm",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton BYOK LLM provider abstraction.",
@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*"
+    "@batonai/schema": "workspace:*"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "0.32.1",
