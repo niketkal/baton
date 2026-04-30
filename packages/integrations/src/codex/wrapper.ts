@@ -137,9 +137,9 @@ export async function runWrapper(
       const result = await detect();
       // Fall back to the platform-appropriate bare name when detect
       // can't resolve a path (e.g. user installed codex after init).
-      bin = result.path ?? (process.platform === 'win32' ? 'codex.exe' : 'codex');
+      bin = result.path ?? 'codex';
     } catch {
-      bin = process.platform === 'win32' ? 'codex.exe' : 'codex';
+      bin = 'codex';
     }
   }
   // On Windows, codex may be installed as a `.cmd`/`.bat` shim (e.g. npm

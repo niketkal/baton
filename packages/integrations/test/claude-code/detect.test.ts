@@ -57,9 +57,8 @@ afterEach(() => {
 });
 
 // Pin platform to a non-win32 value for the POSIX-shaped tests in this
-// describe. Mocks match on bare `claude`; on Windows runners detect()
-// would otherwise probe `claude.exe` first and break the mock-call
-// sequence. Inner `Windows platform` describes override per-test.
+// describe. Mocks match on bare `claude`. Inner `Windows platform`
+// describes override per-test.
 const originalPlatformForSuite = process.platform;
 
 describe('claude-code detect', () => {
@@ -136,16 +135,14 @@ describe('claude-code detect', () => {
       process.env.LOCALAPPDATA = originalLocalAppData ?? '';
     });
 
-    it('looks for claude.exe via PATH first on win32', async () => {
+    it('looks up bare `claude` via PATH on win32 (cmd.exe + PATHEXT resolves the extension)', async () => {
       Object.defineProperty(process, 'platform', { value: 'win32' });
       __setSpawnForTests(
-        mockSpawn([
-          { matchPath: (p) => p === 'claude.exe', result: versionOk('claude 2.5.0\r\n') },
-        ]),
+        mockSpawn([{ matchPath: (p) => p === 'claude', result: versionOk('claude 2.5.0\r\n') }]),
       );
       const result = await detect();
       expect(result.installed).toBe(true);
-      expect(result.path).toBe('claude.exe');
+      expect(result.path).toBe('claude');
       expect(result.version).toBe('2.5.0');
     });
 
@@ -162,7 +159,6 @@ describe('claude-code detect', () => {
 
       __setSpawnForTests(
         mockSpawn([
-          { matchPath: (p) => p === 'claude.exe', result: enoent() },
           { matchPath: (p) => p === 'claude', result: enoent() },
           { matchPath: (p) => p === winBin, result: versionOk('claude 2.6.0\r\n') },
         ]),

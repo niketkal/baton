@@ -59,9 +59,14 @@ function knownCandidates(): string[] {
   return [...posix, ...win];
 }
 
-/** Bare names to try via PATH. Windows tries `claude.exe` first then `claude`. */
+/**
+ * Bare names to try via PATH. Always `'claude'` — on Windows we go through
+ * cmd.exe (shell:true) so PATHEXT resolves whatever extension is actually
+ * installed (`.exe`, `.cmd`, `.bat`, etc.). A literal `'claude.exe'` would
+ * miss npm-installed shims that ship as `claude.cmd`.
+ */
 function pathNames(): string[] {
-  return process.platform === 'win32' ? ['claude.exe', 'claude'] : ['claude'];
+  return ['claude'];
 }
 
 async function tryPathLookup(): Promise<

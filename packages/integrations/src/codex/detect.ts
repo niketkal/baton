@@ -9,7 +9,9 @@ import type { DetectResult } from '../types.js';
  *
  * Two-stage strategy:
  *   1. `spawnSync('codex', ['--version'])` — covers PATH installs.
- *      On Windows, tries `codex.exe` first, then `codex`.
+ *      On Windows we go through cmd.exe (shell:true) so PATHEXT
+ *      resolves whichever extension is actually installed
+ *      (`.exe` / `.cmd` / `.bat`).
  *   2. If PATH lookup returns ENOENT (or status 127), probe a list of
  *      known install locations: macOS desktop app, Homebrew prefixes,
  *      common user-local dirs, plus Windows install dirs (LOCALAPPDATA,
@@ -60,9 +62,14 @@ function knownCandidates(): string[] {
   return [...posix, ...win];
 }
 
-/** Bare names to try via PATH. Windows tries `codex.exe` first then `codex`. */
+/**
+ * Bare names to try via PATH. Always `'codex'` — on Windows we go through
+ * cmd.exe (shell:true) so PATHEXT resolves whatever extension is actually
+ * installed (`.exe`, `.cmd`, `.bat`, etc.). A literal `'codex.exe'` would
+ * miss npm-installed shims that ship as `codex.cmd`.
+ */
 function pathNames(): string[] {
-  return process.platform === 'win32' ? ['codex.exe', 'codex'] : ['codex'];
+  return ['codex'];
 }
 
 async function tryPathLookup(): Promise<

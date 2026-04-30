@@ -63,10 +63,9 @@ afterEach(() => {
 });
 
 // Pin platform to a non-win32 value for the POSIX-shaped tests in this
-// describe block. The mocks below match on bare `codex` (not `codex.exe`),
-// and on Windows runners detect() would otherwise probe `codex.exe` first
-// and break the mock-call sequence. Inner `Windows platform` describes
-// override per-test and restore to this pinned value.
+// describe block. The mocks below match on bare `codex`. Inner
+// `Windows platform` describes override per-test and restore to this
+// pinned value.
 const originalPlatformForSuite = process.platform;
 
 describe('codex detect', () => {
@@ -172,30 +171,15 @@ describe('codex detect', () => {
       process.env.LOCALAPPDATA = originalLocalAppData ?? '';
     });
 
-    it('looks for codex.exe via PATH first on win32', async () => {
+    it('looks up bare `codex` via PATH on win32 (cmd.exe + PATHEXT resolves the extension)', async () => {
       Object.defineProperty(process, 'platform', { value: 'win32' });
       __setSpawnForTests(
-        mockSpawn([{ matchPath: (p) => p === 'codex.exe', result: versionOk('codex 0.11.0\r\n') }]),
-      );
-      const result = await detect();
-      expect(result.installed).toBe(true);
-      expect(result.path).toBe('codex.exe');
-      expect(result.version).toBe('0.11.0');
-    });
-
-    it('falls through codex.exe ENOENT to bare codex on win32', async () => {
-      Object.defineProperty(process, 'platform', { value: 'win32' });
-      process.env.BATON_CODEX_BIN = '';
-      __setSpawnForTests(
-        mockSpawn([
-          { matchPath: (p) => p === 'codex.exe', result: enoent() },
-          { matchPath: (p) => p === 'codex', result: versionOk('codex 0.12.0\r\n') },
-        ]),
+        mockSpawn([{ matchPath: (p) => p === 'codex', result: versionOk('codex 0.11.0\r\n') }]),
       );
       const result = await detect();
       expect(result.installed).toBe(true);
       expect(result.path).toBe('codex');
-      expect(result.version).toBe('0.12.0');
+      expect(result.version).toBe('0.11.0');
     });
 
     it('honors BATON_CODEX_BIN with .exe path on win32', async () => {
@@ -208,7 +192,6 @@ describe('codex detect', () => {
 
       __setSpawnForTests(
         mockSpawn([
-          { matchPath: (p) => p === 'codex.exe', result: enoent() },
           { matchPath: (p) => p === 'codex', result: enoent() },
           { matchPath: (p) => p === winBin, result: versionOk('codex 1.5.0\r\n') },
         ]),
@@ -229,7 +212,7 @@ describe('codex detect', () => {
       // depending on what real desktop-app paths happen to exist on the
       // test runner. We just assert the function returns a stable shape.
       __setSpawnForTests(((path: string) => {
-        if (path === 'codex.exe' || path === 'codex') return enoent();
+        if (path === 'codex') return enoent();
         // Anything else is a probe call against an unknown candidate; treat
         // as a non-codex binary so the probe rejects it.
         return {
