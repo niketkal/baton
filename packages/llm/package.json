@@ -1,6 +1,6 @@
 {
   "name": "@batonai/llm",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "Apache-2.0",
   "description": "Baton BYOK LLM provider abstraction.",
   "type": "module",
@@ -34,9 +34,17 @@
     "openai": "*"
   },
   "peerDependenciesMeta": {
-    "@anthropic-ai/sdk": { "optional": true },
-    "@anthropic-ai/tokenizer": { "optional": true },
-    "js-tiktoken": { "optional": true },
-    "openai": { "optional": true }
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "@anthropic-ai/tokenizer": {
+      "optional": true
+    },
+    "js-tiktoken": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    }
   }
 }

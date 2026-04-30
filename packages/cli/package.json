@@ -1,6 +1,6 @@
 {
   "name": "@batonai/cli",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "Apache-2.0",
   "description": "Baton command-line interface.",
   "type": "module",
@@ -43,7 +43,11 @@
     "openai": "*"
   },
   "peerDependenciesMeta": {
-    "@anthropic-ai/sdk": { "optional": true },
-    "openai": { "optional": true }
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    }
   }
 }
