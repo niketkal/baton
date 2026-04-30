@@ -37,7 +37,10 @@ describe('ingest', () => {
     // Close pino's file handle before rmSync; on Windows an open handle
     // blocks `rmdir` of the parent `.baton/logs` directory (`ENOTEMPTY`).
     await closeLogger();
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    // Extra Windows headroom: SonicBoom's underlying fd close is async,
+    // and CI runners can be slow under parallel load. 10×200ms = 2s
+    // before giving up.
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   it('streams a small file source through to the artifact dir', async () => {
