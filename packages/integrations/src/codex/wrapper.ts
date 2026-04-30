@@ -23,6 +23,7 @@
 
 import { spawn } from 'node:child_process';
 import type { Readable } from 'node:stream';
+import { detect } from './detect.js';
 import { hasLimitMarker } from './markers.js';
 
 export interface WrapperOptions {
@@ -41,6 +42,12 @@ export interface WrapperOptions {
    * Where to print the [baton] notification line. Defaults to stderr.
    */
   notify?: (line: string) => void;
+  /**
+   * Path to the `codex` binary to spawn. When omitted, the wrapper calls
+   * `detect()` and uses the resolved path so off-PATH installs (macOS
+   * desktop app) work without further configuration.
+   */
+  codexBin?: string;
 }
 
 /**
@@ -120,7 +127,16 @@ export async function runWrapper(
   argv: readonly string[],
   opts: WrapperOptions = {},
 ): Promise<number> {
-  const child = spawn('codex', [...argv], {
+  let bin = opts.codexBin;
+  if (!bin) {
+    try {
+      const result = await detect();
+      bin = result.path ?? 'codex';
+    } catch {
+      bin = 'codex';
+    }
+  }
+  const child = spawn(bin, [...argv], {
     stdio: ['inherit', 'pipe', 'inherit'],
     windowsHide: true,
   });
