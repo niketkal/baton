@@ -2,7 +2,7 @@ import type { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __setSpawnForTests, detect } from '../../src/claude-code/detect.js';
 
 type SpawnFn = typeof spawnSync;
@@ -56,7 +56,19 @@ afterEach(() => {
   else process.env.BATON_CLAUDE_BIN = originalEnv.BATON_CLAUDE_BIN;
 });
 
+// Pin platform to a non-win32 value for the POSIX-shaped tests in this
+// describe. Mocks match on bare `claude`. Inner `Windows platform`
+// describes override per-test.
+const originalPlatformForSuite = process.platform;
+
 describe('claude-code detect', () => {
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatformForSuite });
+  });
+
   it('returns installed=true with parsed semver when claude --version succeeds', async () => {
     __setSpawnForTests(
       mockSpawn([{ matchPath: (p) => p === 'claude', result: versionOk('claude 2.4.1\n') }]),
@@ -112,6 +124,50 @@ describe('claude-code detect', () => {
     const result = await detect();
     expect(result.installed).toBe(false);
     expect(result.reason).toMatch(/BATON_CLAUDE_BIN/);
+  });
+
+  describe('Windows platform', () => {
+    const originalPlatform = process.platform;
+    const originalLocalAppData = process.env.LOCALAPPDATA;
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+      process.env.LOCALAPPDATA = originalLocalAppData ?? '';
+    });
+
+    it('looks up bare `claude` via PATH on win32 (cmd.exe + PATHEXT resolves the extension)', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      __setSpawnForTests(
+        mockSpawn([{ matchPath: (p) => p === 'claude', result: versionOk('claude 2.5.0\r\n') }]),
+      );
+      const result = await detect();
+      expect(result.installed).toBe(true);
+      expect(result.path).toBe('claude');
+      expect(result.version).toBe('2.5.0');
+    });
+
+    it('probes LOCALAPPDATA Programs path when PATH misses on win32', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      process.env.BATON_CLAUDE_BIN = '';
+      const fakeLocalAppData = mkdtempSync(join(tmpdir(), 'baton-win-claude-'));
+      const programsDir = join(fakeLocalAppData, 'Programs', 'Claude');
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(programsDir, { recursive: true });
+      const winBin = join(programsDir, 'claude.exe');
+      writeFileSync(winBin, 'MZ\x00\x00fake exe');
+      process.env.LOCALAPPDATA = fakeLocalAppData;
+
+      __setSpawnForTests(
+        mockSpawn([
+          { matchPath: (p) => p === 'claude', result: enoent() },
+          { matchPath: (p) => p === winBin, result: versionOk('claude 2.6.0\r\n') },
+        ]),
+      );
+      const result = await detect();
+      expect(result.installed).toBe(true);
+      expect(result.path).toBe(winBin);
+      expect(result.version).toBe('2.6.0');
+    });
   });
 
   it('does not throw when spawn itself throws', async () => {

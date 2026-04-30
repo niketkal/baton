@@ -4,8 +4,11 @@ import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { install } from '../../src/codex/install.js';
-import { SHIM_CONTENT, SHIM_FILENAME } from '../../src/codex/shim.js';
+import { shimContentForPlatform, shimFilenameForPlatform } from '../../src/codex/shim.js';
 import { uninstall } from '../../src/codex/uninstall.js';
+
+const SHIM_FILENAME = shimFilenameForPlatform();
+const SHIM_CONTENT = shimContentForPlatform();
 
 function dirFingerprint(root: string): string {
   if (!statSync(root, { throwIfNoEntry: false })) return 'EMPTY';
@@ -62,6 +65,22 @@ describe('codex shim install/uninstall roundtrip', () => {
     await uninstall({ repoRoot });
     // No throw; manifest never created.
     expect(true).toBe(true);
+  });
+
+  it('install picks platform-appropriate shim filename + content', async () => {
+    await install({ pluginDir: installDir, repoRoot });
+    const expectedName = process.platform === 'win32' ? 'baton-codex.cmd' : 'baton-codex';
+    expect(SHIM_FILENAME).toBe(expectedName);
+    const shimPath = join(installDir, expectedName);
+    expect(statSync(shimPath).isFile()).toBe(true);
+    const content = readFileSync(shimPath, 'utf8');
+    if (process.platform === 'win32') {
+      expect(content).toMatch(/@echo off/);
+      expect(content).toMatch(/baton internal codex-wrap %\*/);
+    } else {
+      expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+      expect(content).toMatch(/exec baton internal codex-wrap/);
+    }
   });
 
   it('uninstall leaves user-edited shims alone (sha256 mismatch)', async () => {

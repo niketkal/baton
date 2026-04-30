@@ -572,13 +572,13 @@ Running `baton init` attempts to:
 
 ### v1 integration matrix
 
-| Tool / surface | Primary v1 mode | Fallback mode | Notes |
-|---|---|---|---|
-| Claude Code | native hook | wrapper launcher | best checkpoint coverage target |
-| Codex CLI | wrapper launcher | manual/paste fallback | important first-class failover target |
-| Cursor | wrapper launcher | pasted artifacts | IDE transcript access may be weaker |
-| Generic CLI tool | manual/paste fallback | periodic checkpoint timer | lowest-common-denominator path |
-| GitHub / CI | webhook ingestion (v1.5) | manual import | repo-event initiated |
+| Tool / surface | Primary v1 mode | Fallback mode | Platforms | Notes |
+|---|---|---|---|---|
+| Claude Code | native hook | wrapper launcher | macOS, Linux, Windows | best checkpoint coverage target |
+| Codex CLI | wrapper launcher | manual/paste fallback | macOS, Linux, Windows | important first-class failover target; `.cmd` shim on Windows, bash shim on POSIX |
+| Cursor | paste fallback | manual | macOS, Linux, Windows | platform-agnostic paste flow |
+| Generic CLI tool | manual/paste fallback | periodic checkpoint timer | macOS, Linux, Windows | lowest-common-denominator path |
+| GitHub / CI | webhook ingestion (v1.5) | manual import | n/a (server-side) | repo-event initiated |
 
 Supported automatic checkpoint moments:
 

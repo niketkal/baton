@@ -9,10 +9,14 @@ import type { DetectResult } from '../types.js';
  *
  * Two-stage strategy:
  *   1. `spawnSync('codex', ['--version'])` — covers PATH installs.
+ *      On Windows we go through cmd.exe (shell:true) so PATHEXT
+ *      resolves whichever extension is actually installed
+ *      (`.exe` / `.cmd` / `.bat`).
  *   2. If PATH lookup returns ENOENT (or status 127), probe a list of
  *      known install locations: macOS desktop app, Homebrew prefixes,
- *      common user-local dirs. `BATON_CODEX_BIN` overrides the probe
- *      list — when set, only that path is tried.
+ *      common user-local dirs, plus Windows install dirs (LOCALAPPDATA,
+ *      PROGRAMFILES, PROGRAMFILES(X86)). `BATON_CODEX_BIN` overrides the
+ *      probe list — when set, only that path is tried.
  *
  * Aliases (e.g. zsh `alias codex=...`) don't propagate to child
  * processes, so PATH-only detection produces false negatives on
@@ -35,55 +39,91 @@ const SEMVER_RE = /\b(\d+\.\d+\.\d+(?:[-+][\w.]+)?)\b/;
 
 function knownCandidates(): string[] {
   const home = homedir();
-  return [
+  const posix = [
     '/Applications/Codex.app/Contents/Resources/codex',
     '/usr/local/bin/codex',
     '/opt/homebrew/bin/codex',
     join(home, '.codex', 'bin', 'codex'),
     join(home, '.local', 'bin', 'codex'),
   ];
+  // Windows-specific install locations. On POSIX systems these env vars
+  // are unset and `existsSync` will filter them out, so the list is safe
+  // to walk on every platform — but we only emit them when on win32 to
+  // avoid `<undefined>\Programs\Codex\codex.exe` strings in the candidate
+  // list.
+  if (process.platform !== 'win32') return posix;
+  const localAppData = process.env.LOCALAPPDATA;
+  const programFiles = process.env.PROGRAMFILES;
+  const programFilesX86 = process.env['PROGRAMFILES(X86)'];
+  const win: string[] = [];
+  if (localAppData) win.push(join(localAppData, 'Programs', 'Codex', 'codex.exe'));
+  if (programFiles) win.push(join(programFiles, 'Codex', 'codex.exe'));
+  if (programFilesX86) win.push(join(programFilesX86, 'Codex', 'codex.exe'));
+  return [...posix, ...win];
+}
+
+/**
+ * Bare names to try via PATH. Always `'codex'` — on Windows we go through
+ * cmd.exe (shell:true) so PATHEXT resolves whatever extension is actually
+ * installed (`.exe`, `.cmd`, `.bat`, etc.). A literal `'codex.exe'` would
+ * miss npm-installed shims that ship as `codex.cmd`.
+ */
+function pathNames(): string[] {
+  return ['codex'];
+}
+
+async function tryPathLookup(): Promise<
+  | { kind: 'hit'; path: string; version?: string }
+  | { kind: 'miss' }
+  | { kind: 'err'; reason: string }
+> {
+  for (const name of pathNames()) {
+    let result: ReturnType<SpawnFn> | undefined;
+    let spawnThrew = false;
+    try {
+      result = spawnImpl(name, ['--version'], {
+        encoding: 'utf8',
+        timeout: 5_000,
+        windowsHide: true,
+        // On Windows, `.cmd`/`.bat` shims (e.g. npm-installed codex) are
+        // not directly executable via spawn — Node refuses to run them
+        // for security reasons. Routing through cmd.exe lets PATHEXT do
+        // its normal resolution so a bare-name lookup finds those
+        // shims. Args here are static (`--version`), so there's no
+        // injection surface.
+        shell: process.platform === 'win32',
+      });
+    } catch {
+      spawnThrew = true;
+    }
+    if (spawnThrew || !result) continue;
+    if (result.error) {
+      const code = (result.error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') continue;
+      return { kind: 'err', reason: `codex --version failed: ${result.error.message}` };
+    }
+    if (typeof result.status === 'number' && result.status !== 0) {
+      if (result.status === 127) continue;
+      return { kind: 'err', reason: `codex --version exited ${result.status}` };
+    }
+    const out = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+    const match = SEMVER_RE.exec(out);
+    return match
+      ? { kind: 'hit', path: name, version: match[1] as string }
+      : { kind: 'hit', path: name };
+  }
+  return { kind: 'miss' };
 }
 
 export async function detect(): Promise<DetectResult> {
-  let result: ReturnType<SpawnFn> | undefined;
-  let spawnThrew = false;
-  try {
-    result = spawnImpl('codex', ['--version'], {
-      encoding: 'utf8',
-      timeout: 5_000,
-      windowsHide: true,
-    });
-  } catch (_err) {
-    spawnThrew = true;
+  const lookup = await tryPathLookup();
+  if (lookup.kind === 'err') {
+    return { installed: false, reason: lookup.reason };
   }
-
-  // PATH lookup succeeded enough to inspect the result.
-  if (!spawnThrew && result) {
-    if (result.error) {
-      const code = (result.error as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
-        return {
-          installed: false,
-          reason: `codex --version failed: ${result.error.message}`,
-        };
-      }
-      // ENOENT — fall through to probe.
-    } else if (typeof result.status === 'number' && result.status !== 0) {
-      // Status 127 = "command not found" from a shell wrapper; treat as
-      // a probe-eligible miss. Other non-zero statuses are real failures.
-      if (result.status !== 127) {
-        return { installed: false, reason: `codex --version exited ${result.status}` };
-      }
-    } else {
-      const out = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-      const match = SEMVER_RE.exec(out);
-      if (!match) {
-        // Codex may print its version in a non-semver form. Treat as
-        // installed but mark version unknown — opt-in wrapper still works.
-        return { installed: true, path: 'codex' };
-      }
-      return { installed: true, version: match[1] as string, path: 'codex' };
-    }
+  if (lookup.kind === 'hit') {
+    return lookup.version
+      ? { installed: true, version: lookup.version, path: lookup.path }
+      : { installed: true, path: lookup.path };
   }
 
   // PATH lookup missed. Probe known install paths.

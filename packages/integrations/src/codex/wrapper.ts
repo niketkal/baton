@@ -112,6 +112,10 @@ function runBaton(args: readonly string[]): Promise<void> {
     const proc = spawn('baton', args, {
       stdio: ['ignore', 'ignore', 'pipe'],
       windowsHide: true,
+      // npm-installed `baton` is a `.cmd` shim on Windows; spawn refuses
+      // to execute those directly. shell:true routes through cmd.exe so
+      // PATHEXT resolves the shim.
+      shell: process.platform === 'win32',
     });
     proc.on('error', () => resolve());
     proc.on('exit', () => resolve());
@@ -131,14 +135,23 @@ export async function runWrapper(
   if (!bin) {
     try {
       const result = await detect();
+      // Fall back to the platform-appropriate bare name when detect
+      // can't resolve a path (e.g. user installed codex after init).
       bin = result.path ?? 'codex';
     } catch {
       bin = 'codex';
     }
   }
+  // On Windows, codex may be installed as a `.cmd`/`.bat` shim (e.g. npm
+  // install -g). Node refuses to spawn those directly. Going through
+  // cmd.exe (via shell:true) lets the shell resolve the binary using
+  // PATHEXT and execute the resulting batch file. The user-provided argv
+  // is forwarded unchanged; cmd.exe parsing of those args is the same
+  // path codex itself would use if launched from a Windows terminal.
   const child = spawn(bin, [...argv], {
     stdio: ['inherit', 'pipe', 'inherit'],
     windowsHide: true,
+    shell: process.platform === 'win32',
   });
 
   // child.stdout is non-null because we explicitly piped it.

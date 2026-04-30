@@ -2,7 +2,7 @@ import type { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __setSpawnForTests, detect } from '../../src/codex/detect.js';
 
 type SpawnFn = typeof spawnSync;
@@ -62,7 +62,20 @@ afterEach(() => {
   else process.env.BATON_CODEX_BIN = originalEnv.BATON_CODEX_BIN;
 });
 
+// Pin platform to a non-win32 value for the POSIX-shaped tests in this
+// describe block. The mocks below match on bare `codex`. Inner
+// `Windows platform` describes override per-test and restore to this
+// pinned value.
+const originalPlatformForSuite = process.platform;
+
 describe('codex detect', () => {
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatformForSuite });
+  });
+
   it('returns installed=true with bare path when PATH lookup succeeds', async () => {
     __setSpawnForTests(
       mockSpawn([
@@ -147,6 +160,73 @@ describe('codex detect', () => {
     const result = await detect();
     expect(result.installed).toBe(false);
     expect(result.reason).toMatch(/BATON_CODEX_BIN/);
+  });
+
+  describe('Windows platform', () => {
+    const originalPlatform = process.platform;
+    const originalLocalAppData = process.env.LOCALAPPDATA;
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+      process.env.LOCALAPPDATA = originalLocalAppData ?? '';
+    });
+
+    it('looks up bare `codex` via PATH on win32 (cmd.exe + PATHEXT resolves the extension)', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      __setSpawnForTests(
+        mockSpawn([{ matchPath: (p) => p === 'codex', result: versionOk('codex 0.11.0\r\n') }]),
+      );
+      const result = await detect();
+      expect(result.installed).toBe(true);
+      expect(result.path).toBe('codex');
+      expect(result.version).toBe('0.11.0');
+    });
+
+    it('honors BATON_CODEX_BIN with .exe path on win32', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      // Stage a fake codex.exe under a tmp dir.
+      const dir = mkdtempSync(join(tmpdir(), 'baton-win-codex-'));
+      const winBin = join(dir, 'codex.exe');
+      writeFileSync(winBin, 'MZ\x00\x00fake exe');
+      process.env.BATON_CODEX_BIN = winBin;
+
+      __setSpawnForTests(
+        mockSpawn([
+          { matchPath: (p) => p === 'codex', result: enoent() },
+          { matchPath: (p) => p === winBin, result: versionOk('codex 1.5.0\r\n') },
+        ]),
+      );
+      const result = await detect();
+      expect(result.installed).toBe(true);
+      expect(result.path).toBe(winBin);
+      expect(result.version).toBe('1.5.0');
+    });
+
+    it('builds candidate list including LOCALAPPDATA on win32 (smoke)', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      process.env.BATON_CODEX_BIN = '';
+      const fakeLocalAppData = mkdtempSync(join(tmpdir(), 'baton-win-lad-'));
+      process.env.LOCALAPPDATA = fakeLocalAppData;
+      // No codex.exe under fakeLocalAppData; probe walks but finds nothing.
+      // Use a permissive spawn mock — multiple candidates may be tried
+      // depending on what real desktop-app paths happen to exist on the
+      // test runner. We just assert the function returns a stable shape.
+      __setSpawnForTests(((path: string) => {
+        if (path === 'codex') return enoent();
+        // Anything else is a probe call against an unknown candidate; treat
+        // as a non-codex binary so the probe rejects it.
+        return {
+          pid: 0,
+          output: [],
+          stdout: '',
+          stderr: '',
+          status: 1,
+          signal: null,
+        } as unknown as ReturnType<SpawnFn>;
+      }) as unknown as SpawnFn);
+      const result = await detect();
+      expect(typeof result.installed).toBe('boolean');
+    });
   });
 
   it('does not throw when spawn itself throws', async () => {
