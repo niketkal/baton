@@ -1,7 +1,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type CompleteOptions, type CompleteResult, LLMCache, type LLMProvider } from '@baton/llm';
+import {
+  type CompleteOptions,
+  type CompleteResult,
+  LLMCache,
+  type LLMProvider,
+} from '@batonai/llm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { extractNextAction } from '../../src/extract/next-action.js';
 

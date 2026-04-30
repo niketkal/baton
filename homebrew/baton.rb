@@ -1,7 +1,7 @@
 class Baton < Formula
   desc "CLI-first task-state runtime for AI coding tools"
   homepage "https://baton.dev"
-  url "https://registry.npmjs.org/@baton/cli/-/cli-VERSION.tgz"
+  url "https://registry.npmjs.org/@batonai/cli/-/cli-VERSION.tgz"
   sha256 "GENERATED_AT_RELEASE"
   license "Apache-2.0"
   depends_on "node@20"

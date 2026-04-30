@@ -1,5 +1,5 @@
 {
-  "name": "@baton/lint",
+  "name": "@batonai/lint",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton BTN lint rule engine.",
@@ -19,6 +19,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*"
+    "@batonai/schema": "workspace:*"
   }
 }

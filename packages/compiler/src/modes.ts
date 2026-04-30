@@ -1,5 +1,5 @@
-import type { LLMCache, LLMProvider } from '@baton/llm';
-import { SCHEMA_VERSION } from '@baton/schema';
+import type { LLMCache, LLMProvider } from '@batonai/llm';
+import { SCHEMA_VERSION } from '@batonai/schema';
 import type { ParsedTranscript } from './parsers/types.js';
 import type { RepoContext } from './repo.js';
 import type { CompileWarning, Packet } from './types.js';

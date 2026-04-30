@@ -1,5 +1,5 @@
 {
-  "name": "@baton/compiler",
+  "name": "@batonai/compiler",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton artifact ingestion + compile pipeline.",
@@ -19,10 +19,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*",
-    "@baton/lint": "workspace:*",
-    "@baton/llm": "workspace:*",
-    "@baton/store": "workspace:*",
+    "@batonai/schema": "workspace:*",
+    "@batonai/lint": "workspace:*",
+    "@batonai/llm": "workspace:*",
+    "@batonai/store": "workspace:*",
     "remark-parse": "11.0.0",
     "remark-stringify": "11.0.0",
     "simple-git": "3.27.0",

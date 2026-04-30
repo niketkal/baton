@@ -8,7 +8,7 @@
  * record it on the packet rather than aborting the whole compile.
  */
 
-import type { AcceptanceCriterion, Attempt } from '@baton/schema';
+import type { AcceptanceCriterion, Attempt } from '@batonai/schema';
 import type { CompileWarning } from '../types.js';
 
 export interface ExtractResult<T> {

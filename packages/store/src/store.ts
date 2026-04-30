@@ -1,5 +1,5 @@
 import { mkdirSync, statSync } from 'node:fs';
-import type { BatonPacket, Warning } from '@baton/schema';
+import type { BatonPacket, Warning } from '@batonai/schema';
 import type { Database } from 'better-sqlite3';
 import { IndexQueries, type PacketSummary, openDatabase, summarize } from './db.js';
 import {

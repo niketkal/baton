@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type CompleteOptions, type CompleteResult, LLMCache, type LLMProvider } from '@baton/llm';
+import {
+  type CompleteOptions,
+  type CompleteResult,
+  LLMCache,
+  type LLMProvider,
+} from '@batonai/llm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { compile } from '../src/pipeline.js';
 

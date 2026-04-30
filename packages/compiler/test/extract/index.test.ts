@@ -1,8 +1,13 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type CompleteOptions, type CompleteResult, LLMCache, type LLMProvider } from '@baton/llm';
-import { SCHEMA_VERSION } from '@baton/schema';
+import {
+  type CompleteOptions,
+  type CompleteResult,
+  LLMCache,
+  type LLMProvider,
+} from '@batonai/llm';
+import { SCHEMA_VERSION } from '@batonai/schema';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runExtractors } from '../../src/extract/index.js';
 import { runFullMode } from '../../src/modes.js';

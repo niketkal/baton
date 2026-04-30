@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 import { describe, expect, it } from 'vitest';
 import { render } from '../src/index.js';
 
@@ -231,7 +231,7 @@ describe('render — cursor target', () => {
 
 describe('render — minimal fixture (empty optional arrays)', () => {
   it('minimal fixture is schema-valid', async () => {
-    const { validatePacket } = await import('@baton/schema');
+    const { validatePacket } = await import('@batonai/schema');
     const result = validatePacket(MINIMAL);
     expect(result.valid).toBe(true);
   });

@@ -1,4 +1,4 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 
 /**
  * Artifact kinds accepted by `baton ingest`. Mirrors
@@ -76,6 +76,6 @@ export interface ConformanceReport {
 
 /**
  * Re-export `BatonPacket` under the local `Packet` alias for
- * downstream consumers who don't want to reach into `@baton/schema`.
+ * downstream consumers who don't want to reach into `@batonai/schema`.
  */
 export type Packet = BatonPacket;

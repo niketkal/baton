@@ -92,6 +92,6 @@ Negative:
 
 ## Related
 
-- ADR 0004 (monorepo with pnpm workspaces — `@baton/store` is a
+- ADR 0004 (monorepo with pnpm workspaces — `@batonai/store` is a
   standalone package)
 - The store responsibilities in `docs/architecture.md`

@@ -1,6 +1,6 @@
 /**
  * Explicit registry of conformance cases. Per CLAUDE.md (the same
- * one-import-per-rule discipline used by `@baton/lint`'s rule
+ * one-import-per-rule discipline used by `@batonai/lint`'s rule
  * registry): adding a case means adding a `cases/<id>/` directory on
  * disk AND adding one entry below. No glob imports.
  */

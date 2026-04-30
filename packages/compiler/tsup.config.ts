@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { defineConfig } from 'tsup';
 
 /**
- * Build config for `@baton/compiler`.
+ * Build config for `@batonai/compiler`.
  *
  * The single non-default piece is the `onSuccess` step that copies
  * `src/extract/prompts/` to `dist/extract/prompts/`. The extractor

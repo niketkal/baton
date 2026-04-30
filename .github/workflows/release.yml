@@ -27,7 +27,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
-      - run: pnpm --filter @baton/conformance test
+      - run: pnpm --filter @batonai/conformance test
       - run: pnpm changeset publish --provenance
       - uses: actions/attest-build-provenance@v2
         with:

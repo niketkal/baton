@@ -7,7 +7,7 @@
  *   3. Fallback to the `none` provider.
  *
  * Provider modules are imported dynamically so that simply importing
- * `@baton/llm` does not pull `@anthropic-ai/sdk` or `openai` into memory.
+ * `@batonai/llm` does not pull `@anthropic-ai/sdk` or `openai` into memory.
  * That's load-bearing for the npx cold-start budget; do not regress it.
  */
 

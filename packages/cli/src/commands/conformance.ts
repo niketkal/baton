@@ -49,7 +49,7 @@ export async function runConformanceCommand(opts: ConformanceCommandOptions): Pr
 
   // Lazy-load the conformance package — it's heavy because it
   // spawns child processes. Top-level import would tax cold start.
-  const { loadCases, runConformance, formatReport } = await import('@baton/conformance');
+  const { loadCases, runConformance, formatReport } = await import('@batonai/conformance');
   const cases = loadCases(opts.casesDir !== undefined ? { casesDir: opts.casesDir } : {});
   const report = await runConformance({ cases, binPath });
   const output = formatReport(report, opts.json === true ? 'json' : 'human');

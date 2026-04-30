@@ -5,7 +5,7 @@
  * Output: `{ next_action, confidence }`.
  */
 
-import type { LLMCache, LLMProvider } from '@baton/llm';
+import type { LLMCache, LLMProvider } from '@batonai/llm';
 import { renderPrompt } from './prompts.js';
 import { runPrompt } from './runner.js';
 import type { ExtractResult } from './types.js';

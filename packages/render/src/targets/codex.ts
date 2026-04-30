@@ -1,5 +1,5 @@
-import { roughEstimate } from '@baton/llm';
-import type { BatonPacket, ContextItem } from '@baton/schema';
+import { roughEstimate } from '@batonai/llm';
+import type { BatonPacket, ContextItem } from '@batonai/schema';
 import { resolveContextLimit } from '../templates/sections.js';
 import type { RenderOptions, RenderResult, Renderer } from '../types.js';
 

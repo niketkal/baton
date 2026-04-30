@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ArtifactRef, ArtifactType, CompileMode } from '@baton/compiler';
-import type { LLMCache, LLMProvider } from '@baton/llm';
+import type { ArtifactRef, ArtifactType, CompileMode } from '@batonai/compiler';
+import type { LLMCache, LLMProvider } from '@batonai/llm';
 import type { Command } from 'commander';
 
 export interface CompileCommandOptions {
@@ -73,7 +73,7 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
   const repoRoot = opts.repo ?? process.cwd();
   const mode: CompileMode = opts.mode ?? 'fast';
 
-  const { compile, estimateCostUsd } = await import('@baton/compiler');
+  const { compile, estimateCostUsd } = await import('@batonai/compiler');
   const artifacts = collectArtifacts(repoRoot, opts.packet);
   const compileOpts: Parameters<typeof compile>[0] = {
     packetId: opts.packet,

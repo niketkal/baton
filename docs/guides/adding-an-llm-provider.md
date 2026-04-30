@@ -83,7 +83,7 @@ A new provider is selectable through the existing configuration order:
 2. `[llm].provider = "google"` in `.baton/config.toml`
 3. `GOOGLE_API_KEY` environment variable
 
-No code change needed in `@baton/cli` once the provider is in the
+No code change needed in `@batonai/cli` once the provider is in the
 registry.
 
 ## 5. Tests
@@ -99,7 +99,7 @@ through the four extraction prompts using a recorded mock response.
 
 ## 6. Document
 
-- Add a paragraph to `docs/architecture.md` § `@baton/llm` listing the
+- Add a paragraph to `docs/architecture.md` § `@batonai/llm` listing the
   new provider.
 - Add the SDK install note to the README provider section.
 

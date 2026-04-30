@@ -52,8 +52,8 @@ Baton does not require:
 
 For v1 launch, two install paths are first-class:
 
-- **fastest first-use:** `npx @baton/cli failover ...`
-- **stable daily-driver:** `npm install -g @baton/cli`
+- **fastest first-use:** `npx @batonai/cli failover ...`
+- **stable daily-driver:** `npm install -g @batonai/cli`
 - **secondary stable (post-v1.0.0):** `brew install baton`
 
 The Homebrew formula wraps a tagged npm release plus a pinned Node binary so
@@ -337,7 +337,7 @@ Run the public conformance suite.
 ```bash
 baton conformance
 baton conformance --json
-npx @baton/conformance --against ./my-bin   # third-party implementations
+npx @batonai/conformance --against ./my-bin   # third-party implementations
 ```
 
 ---

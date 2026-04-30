@@ -1,5 +1,5 @@
 {
-  "name": "@baton/adapters",
+  "name": "@batonai/adapters",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton output adapters (file, stdout, shell, clipboard).",
@@ -19,6 +19,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*"
+    "@batonai/schema": "workspace:*"
   }
 }

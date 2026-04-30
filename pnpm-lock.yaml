@@ -29,7 +29,7 @@ importers:
 
   packages/adapters:
     dependencies:
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
 
@@ -38,31 +38,31 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '*'
         version: 0.32.1
-      '@baton/adapters':
+      '@batonai/adapters':
         specifier: workspace:*
         version: link:../adapters
-      '@baton/compiler':
+      '@batonai/compiler':
         specifier: workspace:*
         version: link:../compiler
-      '@baton/conformance':
+      '@batonai/conformance':
         specifier: workspace:*
         version: link:../conformance
-      '@baton/integrations':
+      '@batonai/integrations':
         specifier: workspace:*
         version: link:../integrations
-      '@baton/lint':
+      '@batonai/lint':
         specifier: workspace:*
         version: link:../lint
-      '@baton/llm':
+      '@batonai/llm':
         specifier: workspace:*
         version: link:../llm
-      '@baton/render':
+      '@batonai/render':
         specifier: workspace:*
         version: link:../render
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
-      '@baton/store':
+      '@batonai/store':
         specifier: workspace:*
         version: link:../store
       clipboardy:
@@ -83,16 +83,16 @@ importers:
 
   packages/compiler:
     dependencies:
-      '@baton/lint':
+      '@batonai/lint':
         specifier: workspace:*
         version: link:../lint
-      '@baton/llm':
+      '@batonai/llm':
         specifier: workspace:*
         version: link:../llm
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
-      '@baton/store':
+      '@batonai/store':
         specifier: workspace:*
         version: link:../store
       remark-parse:
@@ -110,13 +110,13 @@ importers:
 
   packages/conformance:
     dependencies:
-      '@baton/lint':
+      '@batonai/lint':
         specifier: workspace:*
         version: link:../lint
-      '@baton/render':
+      '@batonai/render':
         specifier: workspace:*
         version: link:../render
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
       commander:
@@ -125,19 +125,19 @@ importers:
 
   packages/integrations:
     dependencies:
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
 
   packages/lint:
     dependencies:
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
 
   packages/llm:
     dependencies:
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
     devDependencies:
@@ -156,10 +156,10 @@ importers:
 
   packages/render:
     dependencies:
-      '@baton/llm':
+      '@batonai/llm':
         specifier: workspace:*
         version: link:../llm
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
 
@@ -178,7 +178,7 @@ importers:
 
   packages/store:
     dependencies:
-      '@baton/schema':
+      '@batonai/schema':
         specifier: workspace:*
         version: link:../schema
       better-sqlite3:

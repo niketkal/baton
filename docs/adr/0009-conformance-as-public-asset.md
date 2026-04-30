@@ -28,11 +28,11 @@ Two structural choices:
   marketing claim. Rejected.
 - **Public synthetic cases plus private regression corpus.** The public
   suite is the contract; the private corpus is a development tool that
-  stays internal. Ships in the OSS repo as `@baton/conformance`.
+  stays internal. Ships in the OSS repo as `@batonai/conformance`.
 
 ## Decision
 
-Ship `@baton/conformance` as a **public package** in the main repo.
+Ship `@batonai/conformance` as a **public package** in the main repo.
 
 - `cases/` contains JSON files describing test cases: input artifacts,
   expected packet shape, expected lint result.
@@ -42,7 +42,7 @@ Ship `@baton/conformance` as a **public package** in the main repo.
   standard CLI surface.
 - `report.ts` produces a public report (passing/failing case names) —
   the artifact behind any "Baton-compatible" claim.
-- Third parties consume it as `npx @baton/conformance --against
+- Third parties consume it as `npx @batonai/conformance --against
   ./my-bin` or by adding it as a dev dependency.
 
 Larger regression corpora used during development stay private. The

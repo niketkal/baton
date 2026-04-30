@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 import type { Database, Statement } from 'better-sqlite3';
 
 const require = createRequire(import.meta.url);

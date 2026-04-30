@@ -1,7 +1,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type CompleteOptions, type CompleteResult, LLMCache, type LLMProvider } from '@baton/llm';
+import {
+  type CompleteOptions,
+  type CompleteResult,
+  LLMCache,
+  type LLMProvider,
+} from '@batonai/llm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { extractAcceptanceCriteria } from '../../src/extract/acceptance-criteria.js';
 import type { NormalizedInput } from '../../src/modes.js';

@@ -73,4 +73,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
-      - run: pnpm --filter @baton/cli test:performance
+      - run: pnpm --filter @batonai/cli test:performance

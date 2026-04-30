@@ -1,6 +1,6 @@
 import { join } from 'node:path';
-import { validatePacket } from '@baton/schema';
-import { PacketStore } from '@baton/store';
+import { validatePacket } from '@batonai/schema';
+import { PacketStore } from '@batonai/store';
 import { getPriorPacket } from './cache.js';
 import * as modes from './modes.js';
 import type { NormalizedInput } from './modes.js';
@@ -81,7 +81,7 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
   const repoCtx = await attachRepo({ root: opts.repoRoot });
   const persistEnabled = opts.storeRoot !== false;
   // PacketStore.open takes the repo root and appends `.baton` itself
-  // (see @baton/store paths.resolvePaths). If the caller supplied an
+  // (see @batonai/store paths.resolvePaths). If the caller supplied an
   // explicit storeRoot string we use it verbatim — same contract.
   const storeRoot = typeof opts.storeRoot === 'string' ? opts.storeRoot : opts.repoRoot;
 
@@ -104,8 +104,8 @@ export async function compile(opts: CompileOptions): Promise<CompileResult> {
     let modeResult: modes.ModeResult;
     if (opts.mode === 'full') {
       // Resolve LLM + cache lazily so the fast-mode happy path never
-      // pays for `@baton/llm` imports (CLAUDE.md invariant 2).
-      const { getProvider, LLMCache, defaultCacheRoot } = await import('@baton/llm');
+      // pays for `@batonai/llm` imports (CLAUDE.md invariant 2).
+      const { getProvider, LLMCache, defaultCacheRoot } = await import('@batonai/llm');
       const llm = opts.llm ?? (await getProvider({}));
       const cache =
         opts.cache === null

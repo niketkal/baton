@@ -4,7 +4,7 @@ A high-level engineering overview of how the Baton CLI is put together.
 
 This is a public companion to the package READMEs and ADRs. It explains the
 layered architecture, the canonical data flow for `baton failover`, and the
-responsibilities of each `@baton/*` package. For implementation specifics,
+responsibilities of each `@batonai/*` package. For implementation specifics,
 follow the links into individual packages and ADRs.
 
 ---
@@ -17,7 +17,7 @@ needs, and each layer is independent enough to test in isolation.
 
 ```
                        ┌────────────────────────┐
-                       │     CLI dispatcher     │   @baton/cli
+                       │     CLI dispatcher     │   @batonai/cli
                        └───────────┬────────────┘
                                    │
         ┌──────────────────────────┼─────────────────────────────┐
@@ -155,16 +155,16 @@ A single Git repository, pnpm workspaces, monorepo style.
 ```
 baton/
 ├── packages/
-│   ├── schema/         # @baton/schema       — packet schema + types
-│   ├── lint/           # @baton/lint         — BTN rule engine
-│   ├── store/          # @baton/store        — files + sqlite state
-│   ├── llm/            # @baton/llm          — BYOK provider abstraction
-│   ├── compiler/       # @baton/compiler     — artifact → packet
-│   ├── render/         # @baton/render       — target-specific renderers
-│   ├── adapters/       # @baton/adapters     — file/stdout/shell/clipboard
-│   ├── integrations/   # @baton/integrations — per-tool hooks/wrappers
-│   ├── conformance/    # @baton/conformance  — public test suite
-│   └── cli/            # @baton/cli          — main CLI entry
+│   ├── schema/         # @batonai/schema       — packet schema + types
+│   ├── lint/           # @batonai/lint         — BTN rule engine
+│   ├── store/          # @batonai/store        — files + sqlite state
+│   ├── llm/            # @batonai/llm          — BYOK provider abstraction
+│   ├── compiler/       # @batonai/compiler     — artifact → packet
+│   ├── render/         # @batonai/render       — target-specific renderers
+│   ├── adapters/       # @batonai/adapters     — file/stdout/shell/clipboard
+│   ├── integrations/   # @batonai/integrations — per-tool hooks/wrappers
+│   ├── conformance/    # @batonai/conformance  — public test suite
+│   └── cli/            # @batonai/cli          — main CLI entry
 ├── docs/
 │   ├── architecture.md             # this file
 │   ├── spec/                       # CLI contract, lint rules, packet schema
@@ -180,7 +180,7 @@ monorepo + pnpm workspace shape.
 
 ## Per-package responsibilities
 
-### `@baton/schema`
+### `@batonai/schema`
 
 Source of truth for the packet schema and the TypeScript types derived from
 it.
@@ -197,7 +197,7 @@ Schema is the source of truth; types are generated. Never hand-edit the
 generated types. See ADR [0010](adr/0010-schema-license-cc0.md) for the
 license split.
 
-### `@baton/lint`
+### `@batonai/lint`
 
 The BTN rule engine.
 
@@ -213,7 +213,7 @@ Each rule is a pure function over the packet plus a small read-only context
 registry is a deliberate trade for predictable bundling, working
 tree-shaking, and a statically inspectable rule set.
 
-### `@baton/store`
+### `@batonai/store`
 
 Repo-local persistence.
 
@@ -229,7 +229,7 @@ This layout means `git diff` on `.baton/packets/<id>/` shows the meaningful
 change, `cp -r` is a valid backup, and a missing `state.db` is recoverable.
 See ADR [0003](adr/0003-state-storage.md).
 
-### `@baton/llm`
+### `@batonai/llm`
 
 Provider-abstracted LLM interface for BYOK use.
 
@@ -249,7 +249,7 @@ interface LLMProvider {
 The compiler imports the registry, never a specific provider. See ADR
 [0002](adr/0002-byok-llm-providers.md).
 
-### `@baton/compiler`
+### `@batonai/compiler`
 
 The artifact → packet pipeline.
 
@@ -263,7 +263,7 @@ The artifact → packet pipeline.
 - `provenance.ts` — span attribution back into source artifacts
 - `modes.ts` — `--fast` (deterministic + cache) vs `--full`
 
-### `@baton/render`
+### `@batonai/render`
 
 Target-specific renderers.
 
@@ -277,7 +277,7 @@ interface Renderer {
 Each target file under `targets/`. Renderers are pure functions of (packet,
 hints).
 
-### `@baton/adapters`
+### `@batonai/adapters`
 
 Delivery adapters that move a rendered packet to its destination.
 
@@ -294,7 +294,7 @@ interface Adapter {
 v1 ships `file`, `stdout`, `shell`, and `clipboard`. A `github-comment`
 adapter is planned for v1.5.
 
-### `@baton/integrations`
+### `@batonai/integrations`
 
 Per-tool hook installers and wrapper launchers.
 
@@ -316,7 +316,7 @@ the user can see exactly what would change before consenting. See ADR
 [0008](adr/0008-tool-integration-modes.md) for the native-hook → wrapper →
 paste fallback ladder.
 
-### `@baton/conformance`
+### `@batonai/conformance`
 
 The public conformance suite. Designed to be runnable both as part of the
 Baton CI and by third-party implementers who want to claim Baton-compatible
@@ -330,7 +330,7 @@ output.
 
 See ADR [0009](adr/0009-conformance-as-public-asset.md).
 
-### `@baton/cli`
+### `@batonai/cli`
 
 User-facing entry point.
 
@@ -343,7 +343,7 @@ User-facing entry point.
 - `output/` — human and JSON renderers; `redactForLog()` lives here
 - `config.ts` — loads and validates `.baton/config.toml`
 
-Depends on every other `@baton/*` package.
+Depends on every other `@batonai/*` package.
 
 ---
 
@@ -352,7 +352,7 @@ Depends on every other `@baton/*` package.
 The minimal interfaces a new contribution typically interacts with:
 
 ```typescript
-// @baton/lint — adding a rule
+// @batonai/lint — adding a rule
 interface LintRule {
   code: string;                                // 'BTN001' …
   severity: 'info' | 'warning' | 'error' | 'critical';
@@ -361,7 +361,7 @@ interface LintRule {
   check(packet: Packet, ctx: LintContext): LintRuleResult;
 }
 
-// @baton/llm — adding a provider
+// @batonai/llm — adding a provider
 interface LLMProvider {
   name: string;
   isConfigured(): boolean;
@@ -369,10 +369,10 @@ interface LLMProvider {
   estimateTokens(text: string): number;
 }
 
-// @baton/integrations — adding an integration
+// @batonai/integrations — adding an integration
 interface Integration { /* see above */ }
 
-// @baton/render — adding a target
+// @batonai/render — adding a target
 interface Renderer { /* see above */ }
 ```
 
@@ -445,7 +445,7 @@ load-bearing one.
 | `baton lint` | < 200ms |
 | `baton render` | < 100ms |
 | `baton failover` happy path | < 5s warm cache |
-| `npx @baton/cli failover` cold start | < 5s on cold npm cache |
+| `npx @batonai/cli failover` cold start | < 5s on cold npm cache |
 
 Adjusting a budget requires a code-owner approval recorded in the PR.
 
@@ -453,8 +453,8 @@ Adjusting a budget requires a code-owner approval recorded in the PR.
 
 ## Distribution
 
-- **npm** is primary. `npm install -g @baton/cli` for stable use.
-- **npx** for first trial: `npx @baton/cli failover ...`. The CLI is
+- **npm** is primary. `npm install -g @batonai/cli` for stable use.
+- **npx** for first trial: `npx @batonai/cli failover ...`. The CLI is
   structured to keep cold-start fast (lazy-loaded LLM SDKs, minimal top-level
   imports).
 - **Homebrew** ships shortly after the v1.0.0 npm release stabilizes. The

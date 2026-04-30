@@ -1,4 +1,4 @@
-import { validatePacket } from '@baton/schema';
+import { validatePacket } from '@batonai/schema';
 import type { LintRule, LintRuleResult } from '../types.js';
 
 /**

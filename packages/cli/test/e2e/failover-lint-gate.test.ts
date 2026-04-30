@@ -3,14 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock @baton/lint to inject a synthetic critical finding. We can't
+// Mock @batonai/lint to inject a synthetic critical finding. We can't
 // trigger BTN060 from artifact content alone (BTN060 scans narrative
 // fields, not raw transcripts), and we don't want a brittle test that
 // hand-builds a packet that violates BTN001-004. Mocking gives us a
 // stable lint-error-but-schema-valid combination, which is exactly the
 // case Fix 1 was added to block.
-vi.mock('@baton/lint', async () => {
-  const actual = await vi.importActual<typeof import('@baton/lint')>('@baton/lint');
+vi.mock('@batonai/lint', async () => {
+  const actual = await vi.importActual<typeof import('@batonai/lint')>('@batonai/lint');
   return {
     ...actual,
     lint: ((packet: { id?: string }) => ({

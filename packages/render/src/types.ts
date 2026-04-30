@@ -1,4 +1,4 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 
 export type RenderTarget = 'generic' | 'claude-code' | 'codex' | 'cursor';
 
@@ -23,7 +23,7 @@ export interface RenderResult {
   /** Full rendered markdown string. */
   markdown: string;
   target: RenderTarget;
-  /** Rough token estimate via `roughEstimate` from `@baton/llm`. */
+  /** Rough token estimate via `roughEstimate` from `@batonai/llm`. */
   tokenEstimate: number;
   warnings: RenderWarning[];
   /** True when context items were dropped to stay under `contextBudget`. */

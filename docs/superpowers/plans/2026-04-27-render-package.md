@@ -1,12 +1,12 @@
-# @baton/render — Session 7 Implementation Plan
+# @batonai/render — Session 7 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement `@baton/render` with `generic` and `claude-code` renderers that convert a `BatonPacket` into target-specific markdown, snapshot-stable, with token estimation wired through `@baton/llm`.
+**Goal:** Implement `@batonai/render` with `generic` and `claude-code` renderers that convert a `BatonPacket` into target-specific markdown, snapshot-stable, with token estimation wired through `@batonai/llm`.
 
-**Architecture:** Pure functions — `render(packet, target, options?)` dispatches to a target-specific renderer; each renderer calls shared section helpers from `templates/sections.ts`; `roughEstimate` from `@baton/llm` gives a token count without async calls or provider knowledge.
+**Architecture:** Pure functions — `render(packet, target, options?)` dispatches to a target-specific renderer; each renderer calls shared section helpers from `templates/sections.ts`; `roughEstimate` from `@batonai/llm` gives a token count without async calls or provider knowledge.
 
-**Tech Stack:** TypeScript 5.x strict ESM, vitest 2.1 `toMatchFileSnapshot`, `@baton/schema` for `BatonPacket` type, `@baton/llm` for `roughEstimate`.
+**Tech Stack:** TypeScript 5.x strict ESM, vitest 2.1 `toMatchFileSnapshot`, `@batonai/schema` for `BatonPacket` type, `@batonai/llm` for `roughEstimate`.
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Action | Path | Responsibility |
 |--------|------|----------------|
-| Modify | `packages/render/package.json` | Add `@baton/llm: workspace:*` dep |
+| Modify | `packages/render/package.json` | Add `@batonai/llm: workspace:*` dep |
 | Create | `packages/render/src/types.ts` | `RenderTarget`, `RenderOptions`, `RenderResult`, `RenderWarning`, `Renderer` |
 | Create | `packages/render/src/templates/sections.ts` | Pure section helpers — each takes packet fields and returns a markdown string |
 | Create | `packages/render/src/targets/generic.ts` | Neutral markdown renderer — one function, no XML |
@@ -28,7 +28,7 @@
 
 ---
 
-## Task 1: Add `@baton/llm` dependency + update tsconfig
+## Task 1: Add `@batonai/llm` dependency + update tsconfig
 
 **Files:**
 - Modify: `packages/render/package.json`
@@ -40,7 +40,7 @@ Replace `packages/render/package.json` with:
 
 ```json
 {
-  "name": "@baton/render",
+  "name": "@batonai/render",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton target-specific renderers (claude-code, codex, cursor, generic).",
@@ -60,8 +60,8 @@ Replace `packages/render/package.json` with:
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*",
-    "@baton/llm": "workspace:*"
+    "@batonai/schema": "workspace:*",
+    "@batonai/llm": "workspace:*"
   }
 }
 ```
@@ -88,13 +88,13 @@ Replace `packages/render/tsconfig.json` with:
 cd /path/to/repo && pnpm install
 ```
 
-Expected: lockfile updated with `@baton/llm` as a dep of `@baton/render`.
+Expected: lockfile updated with `@batonai/llm` as a dep of `@batonai/render`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add packages/render/package.json packages/render/tsconfig.json
-git commit -m "chore(render): add @baton/llm dep + expand tsconfig to include tests"
+git commit -m "chore(render): add @batonai/llm dep + expand tsconfig to include tests"
 ```
 
 ---
@@ -107,7 +107,7 @@ git commit -m "chore(render): add @baton/llm dep + expand tsconfig to include te
 - [ ] **Step 1: Write the file**
 
 ```typescript
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 
 export type RenderTarget = 'generic' | 'claude-code' | 'codex' | 'cursor';
 
@@ -132,7 +132,7 @@ export interface RenderResult {
   /** Full rendered markdown string. */
   markdown: string;
   target: RenderTarget;
-  /** Rough token estimate via `roughEstimate` from `@baton/llm`. */
+  /** Rough token estimate via `roughEstimate` from `@batonai/llm`. */
   tokenEstimate: number;
   warnings: RenderWarning[];
   /** True when context items were dropped to stay under `contextBudget`. */
@@ -306,7 +306,7 @@ Write tests before implementation. They import `render` which doesn't exist yet 
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 import { describe, expect, it } from 'vitest';
 import { render } from '../src/index.js';
 
@@ -443,7 +443,7 @@ describe('render — unknown target', () => {
 - [ ] **Step 2: Run tests to confirm they fail**
 
 ```bash
-pnpm --filter @baton/render test 2>&1 | head -30
+pnpm --filter @batonai/render test 2>&1 | head -30
 ```
 
 Expected: error like `Cannot find module '../src/index.js'` or similar — confirms the tests are wired and waiting for implementation.
@@ -475,7 +475,7 @@ import type {
   OpenQuestion,
   ProvenanceLink,
   RepoContext,
-} from '@baton/schema';
+} from '@batonai/schema';
 
 export function sectionObjective(objective: string): string {
   return `## Objective\n\n${objective}`;
@@ -589,8 +589,8 @@ git commit -m "feat(render): section helpers for markdown rendering"
 - [ ] **Step 1: Write the file**
 
 ```typescript
-import { roughEstimate } from '@baton/llm';
-import type { BatonPacket } from '@baton/schema';
+import { roughEstimate } from '@batonai/llm';
+import type { BatonPacket } from '@batonai/schema';
 import type { RenderOptions, RenderResult, Renderer } from '../types.js';
 import {
   sectionAcceptanceCriteria,
@@ -714,8 +714,8 @@ Claude Code benefits from next_action near the top, priority-ordered context wit
 - [ ] **Step 1: Write the file**
 
 ```typescript
-import { roughEstimate } from '@baton/llm';
-import type { BatonPacket, ContextItem } from '@baton/schema';
+import { roughEstimate } from '@batonai/llm';
+import type { BatonPacket, ContextItem } from '@batonai/schema';
 import type { RenderOptions, RenderResult, Renderer } from '../types.js';
 import {
   sectionAcceptanceCriteria,
@@ -855,7 +855,7 @@ export const RENDERERS: Record<RenderTarget, Renderer | undefined> = {
 - [ ] **Step 2: Rewrite `src/index.ts`**
 
 ```typescript
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 import type { RenderOptions, RenderResult, RenderTarget } from './types.js';
 import { RENDERERS } from './targets/index.js';
 
@@ -893,10 +893,10 @@ git commit -m "feat(render): wire target registry + render() entry point"
 - Auto-created: `packages/render/test/snapshots/generic-fixture-01.md.snap`
 - Auto-created: `packages/render/test/snapshots/claude-code-fixture-01.md.snap`
 
-- [ ] **Step 1: Run the full test suite for `@baton/render`**
+- [ ] **Step 1: Run the full test suite for `@batonai/render`**
 
 ```bash
-pnpm --filter @baton/render test 2>&1
+pnpm --filter @batonai/render test 2>&1
 ```
 
 Expected on first run:
@@ -941,7 +941,7 @@ Verify the output contains:
 - [ ] **Step 4: Run tests a second time to confirm snapshots are stable**
 
 ```bash
-pnpm --filter @baton/render test 2>&1
+pnpm --filter @batonai/render test 2>&1
 ```
 
 Expected: all tests pass, no snapshot updates.
@@ -968,7 +968,7 @@ git commit -m "test(render): lock generic + claude-code snapshot files"
 - [ ] **Step 1: Build the package**
 
 ```bash
-pnpm --filter @baton/render build 2>&1
+pnpm --filter @batonai/render build 2>&1
 ```
 
 Expected: `dist/index.js` + `dist/index.d.ts` written with no errors.
@@ -976,7 +976,7 @@ Expected: `dist/index.js` + `dist/index.d.ts` written with no errors.
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @baton/render typecheck 2>&1
+pnpm --filter @batonai/render typecheck 2>&1
 ```
 
 Expected: no TypeScript errors.
@@ -984,7 +984,7 @@ Expected: no TypeScript errors.
 - [ ] **Step 3: Run full test suite one more time**
 
 ```bash
-pnpm --filter @baton/render test 2>&1
+pnpm --filter @batonai/render test 2>&1
 ```
 
 Expected: all tests pass.
@@ -992,9 +992,9 @@ Expected: all tests pass.
 - [ ] **Step 4: Run upstream packages to confirm no regressions**
 
 ```bash
-pnpm --filter @baton/compiler test 2>&1
-pnpm --filter @baton/lint test 2>&1
-pnpm --filter @baton/schema test 2>&1
+pnpm --filter @batonai/compiler test 2>&1
+pnpm --filter @batonai/lint test 2>&1
+pnpm --filter @batonai/schema test 2>&1
 ```
 
 All must remain green.
@@ -1023,7 +1023,7 @@ git commit -m "feat(render): generic + claude-code targets with snapshot tests"
 | `test/snapshots/generic-fixture-01.md.snap` | Task 9 |
 | `test/snapshots/claude-code-fixture-01.md.snap` | Task 9 |
 | `test/render.test.ts` | Task 4 |
-| Token estimate via `@baton/llm/tokens` | Tasks 1, 6, 7 |
+| Token estimate via `@batonai/llm/tokens` | Tasks 1, 6, 7 |
 | Pure function: same packet → same output | Enforced by deterministic section helpers (no Date.now, no random) |
 
 ### Type Consistency Check
@@ -1033,7 +1033,7 @@ git commit -m "feat(render): generic + claude-code targets with snapshot tests"
 - `claudeCodeRenderer: Renderer` with `target: 'claude-code'` — matches `RenderTarget` union ✓
 - `RENDERERS` keyed by `RenderTarget` with `Renderer | undefined` values — allows `codex`/`cursor` slots to be `undefined` until Session 12 ✓
 - `render()` throws for unknown/unimplemented targets — tested in Task 4 ✓
-- `BatonPacket` imported from `@baton/schema` throughout — consistent ✓
+- `BatonPacket` imported from `@batonai/schema` throughout — consistent ✓
 
 ### Placeholder Scan
 

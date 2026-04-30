@@ -36,7 +36,7 @@ Alternatives considered:
 
 ## Decision
 
-Implement an LLM-provider abstraction in `@baton/llm`:
+Implement an LLM-provider abstraction in `@batonai/llm`:
 
 ```ts
 interface LLMProvider {
@@ -87,4 +87,4 @@ Negative:
 ## Related
 
 - ADR 0001 (TypeScript on Node.js — provider SDKs are JS-native)
-- The `@baton/llm` package interface in `docs/architecture.md`
+- The `@batonai/llm` package interface in `docs/architecture.md`

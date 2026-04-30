@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import type { RenderTarget } from '@baton/render';
+import type { RenderTarget } from '@batonai/render';
 import type { Command } from 'commander';
 
 const SUPPORTED_TARGETS: RenderTarget[] = ['generic', 'claude-code', 'codex', 'cursor'];
@@ -27,9 +27,9 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
   }
 
   // Lazy: PacketStore drags better-sqlite3 (native binding); render
-  // pulls @baton/render. Keep them off the cold-start path.
-  const { render } = await import('@baton/render');
-  const { PacketStore } = await import('@baton/store');
+  // pulls @batonai/render. Keep them off the cold-start path.
+  const { render } = await import('@batonai/render');
+  const { PacketStore } = await import('@batonai/store');
   const store = PacketStore.open(repoRoot);
   let result: ReturnType<typeof render>;
   try {

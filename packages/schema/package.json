@@ -1,5 +1,5 @@
 {
-  "name": "@baton/schema",
+  "name": "@batonai/schema",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton packet JSON Schema (CC0) and generated TypeScript types.",

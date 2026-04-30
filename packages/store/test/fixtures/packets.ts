@@ -1,4 +1,4 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 
 export function makePacket(overrides: Partial<BatonPacket> = {}): BatonPacket {
   return {

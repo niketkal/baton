@@ -1,8 +1,8 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { BatonPacket } from '@baton/schema';
-import { PacketStore } from '@baton/store';
+import type { BatonPacket } from '@batonai/schema';
+import { PacketStore } from '@batonai/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runDispatch } from '../../src/commands/dispatch.js';
 import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';

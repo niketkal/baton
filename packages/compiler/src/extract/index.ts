@@ -14,7 +14,7 @@
  * even though the call sequence is serial.
  */
 
-import type { LLMCache, LLMProvider } from '@baton/llm';
+import type { LLMCache, LLMProvider } from '@batonai/llm';
 import type { NormalizedInput } from '../modes.js';
 import type { CompileWarning, Packet } from '../types.js';
 import { extractAcceptanceCriteria } from './acceptance-criteria.js';

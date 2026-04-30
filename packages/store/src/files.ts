@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { type BatonPacket, type Warning, assertPacket } from '@baton/schema';
+import { type BatonPacket, type Warning, assertPacket } from '@batonai/schema';
 import { renderPacketMarkdown } from './markdown.js';
 import {
   PACKET_JSON,

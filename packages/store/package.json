@@ -1,5 +1,5 @@
 {
-  "name": "@baton/store",
+  "name": "@batonai/store",
   "version": "0.0.0",
   "license": "Apache-2.0",
   "description": "Baton repo-local state. Files canonical, SQLite cache.",
@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@baton/schema": "workspace:*",
+    "@batonai/schema": "workspace:*",
     "better-sqlite3": "12.9.0",
     "remark-parse": "11.0.0",
     "remark-stringify": "11.0.0",

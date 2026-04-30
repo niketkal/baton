@@ -24,7 +24,7 @@ Read them before making changes that touch their surface. They are at:
 - Linting and formatting via `biome`. Run `pnpm biome check --apply` before
   committing.
 - Tests via `vitest`. Run `pnpm -r test` for the whole repo, `pnpm --filter
-  @baton/<pkg> test` for one package.
+  @batonai/<pkg> test` for one package.
 - Build via `tsup`. Run `pnpm -r build`.
 
 ## Package boundaries
@@ -32,31 +32,31 @@ Read them before making changes that touch their surface. They are at:
 The monorepo is nine packages plus the CLI entry. Each has a narrow
 responsibility. Do not break the boundaries:
 
-- `@baton/schema` — JSON Schema + generated types. Schema is source of truth;
-  types are generated via `pnpm --filter @baton/schema codegen`. Never hand-edit
+- `@batonai/schema` — JSON Schema + generated types. Schema is source of truth;
+  types are generated via `pnpm --filter @batonai/schema codegen`. Never hand-edit
   the generated types.
-- `@baton/lint` — BTN rule engine. Each rule is a file under `rules/`. Rule
+- `@batonai/lint` — BTN rule engine. Each rule is a file under `rules/`. Rule
   registration is **explicit** in `rules/index.ts` — one import per rule. No
   glob imports. The trade-off (one extra import line per rule) is deliberate.
-- `@baton/store` — repo-local state. **Files are canonical**; SQLite is a
+- `@batonai/store` — repo-local state. **Files are canonical**; SQLite is a
   rebuildable index. Code that treats SQLite as canonical is a bug.
-- `@baton/llm` — BYOK provider abstraction. The compiler imports the registry,
+- `@batonai/llm` — BYOK provider abstraction. The compiler imports the registry,
   never a specific provider. Anthropic and OpenAI providers ship in v1.
-- `@baton/compiler` — artifact ingestion + compile pipeline. Two modes:
+- `@batonai/compiler` — artifact ingestion + compile pipeline. Two modes:
   `--fast` (deterministic, no LLM call, uses cached extractions) and `--full`
   (LLM-driven synthesis). Hooks default to `--fast`. User-driven handoff
   preparation defaults to `--full`.
-- `@baton/render` — target-specific renderers (`claude-code`, `codex`,
+- `@batonai/render` — target-specific renderers (`claude-code`, `codex`,
   `cursor`, `generic`). Renderers are pure functions of (packet, hints).
-- `@baton/adapters` — `file`, `stdout`, `shell`, `clipboard` for v1.
+- `@batonai/adapters` — `file`, `stdout`, `shell`, `clipboard` for v1.
   `github-comment` is **deferred to v1.5** alongside Cloud's GitHub integration.
   Do not implement it in v1.
-- `@baton/integrations` — per-tool hook installers. v1 ships native hook for
+- `@batonai/integrations` — per-tool hook installers. v1 ships native hook for
   Claude Code, wrapper launcher for Codex CLI, paste fallback for Cursor.
   Every integration must implement `dryRun()` and `uninstall()`.
-- `@baton/conformance` — public test suite. Cases are synthetic fixtures only.
+- `@batonai/conformance` — public test suite. Cases are synthetic fixtures only.
   No real partner transcripts in this package.
-- `@baton/cli` — user-facing CLI. Commands include `init`, `uninstall`,
+- `@batonai/cli` — user-facing CLI. Commands include `init`, `uninstall`,
   `compile`, `failover`, `lint`, `render`, `dispatch`, `outcome`, `status`,
   `history`, `migrate`, `conformance`.
 
@@ -77,8 +77,8 @@ These rules must not be broken without an ADR justifying the change:
 3. **Local logs hold metadata only.** Raw artifact content, transcript spans,
    prompt text, packet narrative fields, and BTN060-flagged values never enter
    `.baton/logs/*` at default log levels. All log calls go through
-   `redactForLog()` in `@baton/cli/output/`. A CI grep check (`pnpm --filter
-   @baton/cli lint:logs`) enforces this. The only exception is
+   `redactForLog()` in `@batonai/cli/output/`. A CI grep check (`pnpm --filter
+   @batonai/cli lint:logs`) enforces this. The only exception is
    `BATON_LOG_LEVEL=debug-unsafe`, which requires explicit env-var opt-in,
    prints a startup banner, and tags every line `{ unsafe: true }`.
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * `npx @baton/conformance --against <bin>` entrypoint.
+ * `npx @batonai/conformance --against <bin>` entrypoint.
  *
  * Lazy-loads heavy modules (commander, the runner) inside `main`
  * so that `--help` / `--version` returns quickly even when the
  * runner has a fat dep graph. Mirrors the cold-start discipline
- * used by `@baton/cli`.
+ * used by `@batonai/cli`.
  */
 async function main(argv: string[]): Promise<number> {
   const { Command } = await import('commander');

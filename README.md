@@ -23,7 +23,7 @@ Use Baton when:
 ## Quickstart
 
 > **Pre-v1:** Baton is not yet published to npm. The instructions below
-> build from source. Once v1.0.0 ships, `npm install -g @baton/cli` will
+> build from source. Once v1.0.0 ships, `npm install -g @batonai/cli` will
 > work directly and the quickstart will collapse to a single command.
 
 ```bash
@@ -51,7 +51,7 @@ baton failover --from claude-code --to codex --packet current-task --copy
 non-strict lint, renders a target-specific handoff, and copies it to your
 clipboard. Paste it into the next tool and continue.
 
-The npm and `npx @baton/cli ...` paths described in
+The npm and `npx @batonai/cli ...` paths described in
 [ADR 0007](docs/adr/0007-distribution-npm-brew.md) become available once
 v1.0.0 is published.
 

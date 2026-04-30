@@ -6,7 +6,7 @@ import type {
   ProvenanceLink,
   SourceArtifact,
   Warning,
-} from '@baton/schema';
+} from '@batonai/schema';
 import remarkStringify from 'remark-stringify';
 import { unified } from 'unified';
 

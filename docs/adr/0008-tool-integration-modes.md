@@ -34,7 +34,7 @@ Define three integration modes, in fallback order:
 3. **Paste** — the user pipes a transcript into `baton ingest transcript
    -` and runs `baton compile` / `baton render` manually.
 
-Every integration in `@baton/integrations` implements:
+Every integration in `@batonai/integrations` implements:
 
 ```ts
 interface Integration {

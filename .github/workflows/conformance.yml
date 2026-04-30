@@ -19,4 +19,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
-      - run: pnpm --filter @baton/conformance test
+      - run: pnpm --filter @batonai/conformance test

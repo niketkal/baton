@@ -25,7 +25,7 @@ Requirements:
 
 ```bash
 # run a single package's tests
-pnpm --filter @baton/lint test
+pnpm --filter @batonai/lint test
 
 # run the whole repo
 pnpm -r test

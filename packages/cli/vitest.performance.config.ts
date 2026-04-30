@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 // Dedicated config for performance-budget tests. Each test spawns the
 // built binary and asserts wall-clock against tech spec §11. Run via
-// `pnpm --filter @baton/cli test:performance`.
+// `pnpm --filter @batonai/cli test:performance`.
 //
 // We disable parallel file execution because budget tests contend on
 // CPU when run alongside one another (and spawn() startup is the very

@@ -5,12 +5,12 @@
 
 ## Context
 
-Each `@baton/*` package ships compiled JavaScript and `.d.ts` declarations
+Each `@batonai/*` package ships compiled JavaScript and `.d.ts` declarations
 to npm. The bundler choice has to handle:
 
 - ESM output (the source is ESM-only)
 - TypeScript declarations
-- multi-entry packages (e.g. `@baton/cli` has a binary entry plus a
+- multi-entry packages (e.g. `@batonai/cli` has a binary entry plus a
   programmatic API)
 - fast incremental builds (developers run `pnpm -r build` often)
 - one config per package, not a wall of webpack/rollup configuration
@@ -29,7 +29,7 @@ Realistic options:
 
 ## Decision
 
-Use **`tsup`** for every `@baton/*` package.
+Use **`tsup`** for every `@batonai/*` package.
 
 - Each package has a single `tsup.config.ts` (or a default config).
 - Output: ESM with declarations. CommonJS dual output is enabled only

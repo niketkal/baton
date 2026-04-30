@@ -1,8 +1,8 @@
-import type { BatonPacket } from '@baton/schema';
+import type { BatonPacket } from '@batonai/schema';
 
 /**
  * The packet shape this package compiles into. Re-exported from
- * `@baton/schema` so consumers can import a `Packet` alias from the
+ * `@batonai/schema` so consumers can import a `Packet` alias from the
  * compiler without reaching into the schema package.
  */
 export type Packet = BatonPacket;
@@ -48,19 +48,19 @@ export interface CompileOptions {
   storeRoot?: string | false;
   /**
    * Optional explicit LLM provider for `--full` mode. If omitted, the
-   * pipeline calls `getProvider()` from `@baton/llm` with no config
+   * pipeline calls `getProvider()` from `@batonai/llm` with no config
    * (the registry honours `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in
    * priority order). Tests pass an explicit `MockProvider` so they
    * never hit the network.
    */
-  llm?: import('@baton/llm').LLMProvider;
+  llm?: import('@batonai/llm').LLMProvider;
   /**
    * Optional content-addressable LLM cache. Defaults to
    * `path.join(repoRoot, '.baton', 'llm-cache')` in `--full` mode.
    * Pass `null` to disable caching for this run; pass a constructed
    * `LLMCache` to use a custom root or size budget.
    */
-  cache?: import('@baton/llm').LLMCache | null;
+  cache?: import('@batonai/llm').LLMCache | null;
 }
 
 export interface CompileWarning {
@@ -68,7 +68,7 @@ export interface CompileWarning {
   message: string;
   severity: 'info' | 'warning' | 'error';
   /**
-   * Optional structured fields for parity with `@baton/lint`'s
+   * Optional structured fields for parity with `@batonai/lint`'s
    * `LintFinding`. Lets a future `baton compile --json` surface
    * compiler warnings in the same shape as lint findings.
    */

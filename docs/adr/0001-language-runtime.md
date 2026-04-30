@@ -61,11 +61,11 @@ Positive:
 
 Negative:
 
-- A Node install is required for `npm install -g @baton/cli` and `npx`.
+- A Node install is required for `npm install -g @batonai/cli` and `npx`.
   Users without Node install via Homebrew (which ships a pinned Node
   binary alongside the CLI) or wait for a future single-binary
   distribution.
-- Cold-start time for `npx @baton/cli failover` is bounded by Node
+- Cold-start time for `npx @batonai/cli failover` is bounded by Node
   startup. Mitigated by lazy-loading heavy dependencies inside the
   command function and by a CI budget test (< 5s on cold cache).
 - Some users would prefer a single static binary today. Tracked as a
