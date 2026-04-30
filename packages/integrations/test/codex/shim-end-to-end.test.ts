@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,11 +76,12 @@ describe('codex shim end-to-end via built CLI', () => {
   });
 
   it('routes through internal codex-wrap and forwards to a mock codex', () => {
-    writeMockCodex(workdir, {
+    const mockPath = writeMockCodex(workdir, {
       exitCode: 0,
       stdout: IS_WIN ? 'MOCK CODEX OK args=%*' : 'MOCK CODEX OK args=$*',
     });
 
+    const childPath = `${workdir}${PATH_SEP}${process.env.PATH ?? ''}`;
     const result = spawnSync(
       process.execPath,
       [CLI_BIN, 'internal', 'codex-wrap', '--flag', 'value'],
@@ -89,12 +90,32 @@ describe('codex shim end-to-end via built CLI', () => {
         env: {
           ...process.env,
           // Prepend the mock dir so our `codex` shadows any real one.
-          PATH: `${workdir}${PATH_SEP}${process.env.PATH ?? ''}`,
+          PATH: childPath,
           // Ensure detect doesn't latch onto a non-existent override.
           BATON_CODEX_BIN: '',
         },
       },
     );
+
+    // Diagnostic block — keep until Windows is stable, then can be removed.
+    process.stderr.write('\n[shim e2e diagnostic test1]\n');
+    process.stderr.write(`  cwd: ${process.cwd()}\n`);
+    process.stderr.write(`  workdir: ${workdir}\n`);
+    process.stderr.write(`  mockPath: ${mockPath}\n`);
+    process.stderr.write(`  mockExists: ${existsSync(mockPath)}\n`);
+    process.stderr.write(`  workdir contents: ${readdirSync(workdir).join(', ')}\n`);
+    process.stderr.write(
+      `  mock content:\n---\n${readFileSync(mockPath, 'utf8')}\n---\n`,
+    );
+    process.stderr.write(`  CLI_BIN: ${CLI_BIN}\n`);
+    process.stderr.write(`  CLI_BIN exists: ${existsSync(CLI_BIN)}\n`);
+    process.stderr.write(`  PATH (first 400 chars): ${childPath.slice(0, 400)}\n`);
+    process.stderr.write(`  status: ${result.status}\n`);
+    process.stderr.write(`  signal: ${result.signal}\n`);
+    process.stderr.write(`  error: ${result.error?.message}\n`);
+    process.stderr.write(`  stdout: ${(result.stdout ?? '').slice(0, 1500)}\n`);
+    process.stderr.write(`  stderr: ${(result.stderr ?? '').slice(0, 1500)}\n`);
+    process.stderr.write('[end shim e2e diagnostic test1]\n');
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('MOCK CODEX OK');
@@ -103,19 +124,37 @@ describe('codex shim end-to-end via built CLI', () => {
   });
 
   it('returns codex exit code when mock codex fails', () => {
-    writeMockCodex(workdir, {
+    const mockPath = writeMockCodex(workdir, {
       exitCode: 7,
       stderr: 'boom',
     });
 
+    const childPath = `${workdir}${PATH_SEP}${process.env.PATH ?? ''}`;
     const result = spawnSync(process.execPath, [CLI_BIN, 'internal', 'codex-wrap'], {
       encoding: 'utf8',
       env: {
         ...process.env,
-        PATH: `${workdir}${PATH_SEP}${process.env.PATH ?? ''}`,
+        PATH: childPath,
         BATON_CODEX_BIN: '',
       },
     });
+
+    // Diagnostic block — keep until Windows is stable, then can be removed.
+    process.stderr.write('\n[shim e2e diagnostic test2]\n');
+    process.stderr.write(`  workdir: ${workdir}\n`);
+    process.stderr.write(`  mockPath: ${mockPath}\n`);
+    process.stderr.write(`  mockExists: ${existsSync(mockPath)}\n`);
+    process.stderr.write(`  workdir contents: ${readdirSync(workdir).join(', ')}\n`);
+    process.stderr.write(
+      `  mock content:\n---\n${readFileSync(mockPath, 'utf8')}\n---\n`,
+    );
+    process.stderr.write(`  PATH (first 400 chars): ${childPath.slice(0, 400)}\n`);
+    process.stderr.write(`  status: ${result.status}\n`);
+    process.stderr.write(`  signal: ${result.signal}\n`);
+    process.stderr.write(`  error: ${result.error?.message}\n`);
+    process.stderr.write(`  stdout: ${(result.stdout ?? '').slice(0, 1500)}\n`);
+    process.stderr.write(`  stderr: ${(result.stderr ?? '').slice(0, 1500)}\n`);
+    process.stderr.write('[end shim e2e diagnostic test2]\n');
 
     expect(result.status).toBe(7);
   });
