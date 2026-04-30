@@ -23,4 +23,14 @@ export { uninstall } from './uninstall.js';
 export { status } from './status.js';
 export { runWrapper, runWrapperOnStream } from './wrapper.js';
 export { LIMIT_MARKERS, hasLimitMarker } from './markers.js';
-export { SHIM_CONTENT, SHIM_FILENAME, shimSha256 } from './shim.js';
+export {
+  POSIX_SHIM,
+  POSIX_SHIM_FILENAME,
+  SHIM_CONTENT,
+  SHIM_FILENAME,
+  WINDOWS_SHIM,
+  WINDOWS_SHIM_FILENAME,
+  shimContentForPlatform,
+  shimFilenameForPlatform,
+  shimSha256,
+} from './shim.js';

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { InstallFailedError } from '../errors.js';
 import { upsertRecord } from '../state.js';
 import type { InstallOpts, InstallPlan, InstallResult } from '../types.js';
-import { SHIM_CONTENT, SHIM_FILENAME } from './shim.js';
+import { shimContentForPlatform, shimFilenameForPlatform } from './shim.js';
 
 const ID = 'codex';
 
@@ -18,22 +18,33 @@ function sha256(s: string): string {
  *
  *   1. `opts.pluginDir` if provided (test seam + power users).
  *   2. `$BATON_CODEX_INSTALL_DIR` if set.
- *   3. `~/.local/bin` — XDG-friendly default. Per tech spec §8.2 we
- *      DO NOT touch PATH; the user opts in by adding this dir to PATH
- *      themselves or invoking `baton-codex` directly.
+ *   3. POSIX: `~/.local/bin` — XDG-friendly default.
+ *      Windows: `%LOCALAPPDATA%\baton\bin` (falls back to
+ *      `~/.local/bin` if LOCALAPPDATA is somehow unset).
+ *
+ *  Per tech spec §8.2 we DO NOT touch PATH; the user opts in by adding
+ *  this dir to PATH themselves or invoking the shim directly.
  */
 function resolveInstallDir(opts: InstallOpts): string {
   if (opts.pluginDir) return opts.pluginDir;
   const fromEnv = process.env.BATON_CODEX_INSTALL_DIR;
   if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA;
+    if (localAppData && localAppData.length > 0) {
+      return join(localAppData, 'baton', 'bin');
+    }
+  }
   return join(homedir(), '.local', 'bin');
 }
 
 export async function buildPlan(
   opts: InstallOpts,
-): Promise<{ plan: InstallPlan; installDir: string; shimPath: string }> {
+): Promise<{ plan: InstallPlan; installDir: string; shimPath: string; shimContent: string }> {
   const installDir = resolveInstallDir(opts);
-  const shimPath = join(installDir, SHIM_FILENAME);
+  const filename = shimFilenameForPlatform();
+  const shimContent = shimContentForPlatform();
+  const shimPath = join(installDir, filename);
   const warnings: string[] = [];
   if (existsSync(shimPath) && !opts.force) {
     warnings.push(
@@ -50,16 +61,19 @@ export async function buildPlan(
     fallbackUsed: false,
     warnings,
   };
-  return { plan, installDir, shimPath };
+  return { plan, installDir, shimPath, shimContent };
 }
 
 export async function install(opts: InstallOpts): Promise<InstallResult> {
-  const { plan, installDir, shimPath } = await buildPlan(opts);
+  const { plan, installDir, shimPath, shimContent } = await buildPlan(opts);
 
   try {
     mkdirSync(installDir, { recursive: true });
-    writeFileSync(shimPath, SHIM_CONTENT, 'utf8');
+    writeFileSync(shimPath, shimContent, 'utf8');
     if (process.platform !== 'win32') {
+      // Windows uses extension-based execution; chmod is a no-op there
+      // and skipping it avoids spurious EPERM on volumes that don't
+      // support POSIX permissions.
       chmodSync(shimPath, 0o755);
     }
   } catch (err) {
@@ -72,7 +86,7 @@ export async function install(opts: InstallOpts): Promise<InstallResult> {
     mode: 'wrapper-launcher',
     installedAt: new Date().toISOString(),
     pluginDir: installDir,
-    files: [{ path: shimPath, sha256: sha256(SHIM_CONTENT) }],
+    files: [{ path: shimPath, sha256: sha256(shimContent) }],
     backupRefs: [],
   });
 

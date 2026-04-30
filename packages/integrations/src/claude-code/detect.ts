@@ -36,51 +36,78 @@ const SEMVER_RE = /\b(\d+\.\d+\.\d+(?:[-+][\w.]+)?)\b/;
 
 function knownCandidates(): string[] {
   const home = homedir();
-  return [
+  const posix = [
     '/usr/local/bin/claude',
     '/opt/homebrew/bin/claude',
     join(home, '.claude', 'bin', 'claude'),
     join(home, '.local', 'bin', 'claude'),
     '/Applications/Claude.app/Contents/Resources/claude',
   ];
+  if (process.platform !== 'win32') return posix;
+  const localAppData = process.env.LOCALAPPDATA;
+  const programFiles = process.env.PROGRAMFILES;
+  const programFilesX86 = process.env['PROGRAMFILES(X86)'];
+  const win: string[] = [];
+  // Exact Windows install path is unknown until Anthropic ships an
+  // installer; probe several plausible locations conservatively.
+  if (localAppData) {
+    win.push(join(localAppData, 'Programs', 'Claude', 'claude.exe'));
+    win.push(join(localAppData, 'AnthropicClaude', 'claude.exe'));
+  }
+  if (programFiles) win.push(join(programFiles, 'Claude', 'claude.exe'));
+  if (programFilesX86) win.push(join(programFilesX86, 'Claude', 'claude.exe'));
+  return [...posix, ...win];
+}
+
+/** Bare names to try via PATH. Windows tries `claude.exe` first then `claude`. */
+function pathNames(): string[] {
+  return process.platform === 'win32' ? ['claude.exe', 'claude'] : ['claude'];
+}
+
+async function tryPathLookup(): Promise<
+  | { kind: 'hit'; path: string; version: string }
+  | { kind: 'unparseable' }
+  | { kind: 'miss' }
+  | { kind: 'err'; reason: string }
+> {
+  for (const name of pathNames()) {
+    let result: ReturnType<SpawnFn> | undefined;
+    let spawnThrew = false;
+    try {
+      result = spawnImpl(name, ['--version'], {
+        encoding: 'utf8',
+        timeout: 5_000,
+        windowsHide: true,
+      });
+    } catch {
+      spawnThrew = true;
+    }
+    if (spawnThrew || !result) continue;
+    if (result.error) {
+      const code = (result.error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') continue;
+      return { kind: 'err', reason: `claude --version failed: ${result.error.message}` };
+    }
+    if (typeof result.status === 'number' && result.status !== 0) {
+      if (result.status === 127) continue;
+      return { kind: 'err', reason: `claude --version exited ${result.status}` };
+    }
+    const out = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+    const match = SEMVER_RE.exec(out);
+    if (!match) return { kind: 'unparseable' };
+    return { kind: 'hit', path: name, version: match[1] as string };
+  }
+  return { kind: 'miss' };
 }
 
 export async function detect(): Promise<DetectResult> {
-  let result: ReturnType<SpawnFn> | undefined;
-  let spawnThrew = false;
-  try {
-    result = spawnImpl('claude', ['--version'], {
-      encoding: 'utf8',
-      timeout: 5_000,
-      windowsHide: true,
-    });
-  } catch (_err) {
-    spawnThrew = true;
+  const lookup = await tryPathLookup();
+  if (lookup.kind === 'err') return { installed: false, reason: lookup.reason };
+  if (lookup.kind === 'unparseable') {
+    return { installed: false, reason: 'could not parse claude --version output' };
   }
-
-  if (!spawnThrew && result) {
-    if (result.error) {
-      const code = (result.error as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
-        return {
-          installed: false,
-          reason: `claude --version failed: ${result.error.message}`,
-        };
-      }
-      // ENOENT — fall through to probe.
-    } else if (typeof result.status === 'number' && result.status !== 0) {
-      if (result.status !== 127) {
-        return { installed: false, reason: `claude --version exited ${result.status}` };
-      }
-      // Status 127 — fall through to probe.
-    } else {
-      const out = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-      const match = SEMVER_RE.exec(out);
-      if (!match) {
-        return { installed: false, reason: 'could not parse claude --version output' };
-      }
-      return { installed: true, version: match[1] as string, path: 'claude' };
-    }
+  if (lookup.kind === 'hit') {
+    return { installed: true, version: lookup.version, path: lookup.path };
   }
 
   // PATH lookup missed. Probe known install paths.

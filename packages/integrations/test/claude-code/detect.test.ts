@@ -114,6 +114,53 @@ describe('claude-code detect', () => {
     expect(result.reason).toMatch(/BATON_CLAUDE_BIN/);
   });
 
+  describe('Windows platform', () => {
+    const originalPlatform = process.platform;
+    const originalLocalAppData = process.env.LOCALAPPDATA;
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+      process.env.LOCALAPPDATA = originalLocalAppData ?? '';
+    });
+
+    it('looks for claude.exe via PATH first on win32', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      __setSpawnForTests(
+        mockSpawn([
+          { matchPath: (p) => p === 'claude.exe', result: versionOk('claude 2.5.0\r\n') },
+        ]),
+      );
+      const result = await detect();
+      expect(result.installed).toBe(true);
+      expect(result.path).toBe('claude.exe');
+      expect(result.version).toBe('2.5.0');
+    });
+
+    it('probes LOCALAPPDATA Programs path when PATH misses on win32', async () => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      process.env.BATON_CLAUDE_BIN = '';
+      const fakeLocalAppData = mkdtempSync(join(tmpdir(), 'baton-win-claude-'));
+      const programsDir = join(fakeLocalAppData, 'Programs', 'Claude');
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(programsDir, { recursive: true });
+      const winBin = join(programsDir, 'claude.exe');
+      writeFileSync(winBin, 'MZ\x00\x00fake exe');
+      process.env.LOCALAPPDATA = fakeLocalAppData;
+
+      __setSpawnForTests(
+        mockSpawn([
+          { matchPath: (p) => p === 'claude.exe', result: enoent() },
+          { matchPath: (p) => p === 'claude', result: enoent() },
+          { matchPath: (p) => p === winBin, result: versionOk('claude 2.6.0\r\n') },
+        ]),
+      );
+      const result = await detect();
+      expect(result.installed).toBe(true);
+      expect(result.path).toBe(winBin);
+      expect(result.version).toBe('2.6.0');
+    });
+  });
+
   it('does not throw when spawn itself throws', async () => {
     process.env.BATON_CLAUDE_BIN = '';
     __setSpawnForTests((() => {

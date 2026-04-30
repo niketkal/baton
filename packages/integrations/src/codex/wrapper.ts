@@ -131,9 +131,11 @@ export async function runWrapper(
   if (!bin) {
     try {
       const result = await detect();
-      bin = result.path ?? 'codex';
+      // Fall back to the platform-appropriate bare name when detect
+      // can't resolve a path (e.g. user installed codex after init).
+      bin = result.path ?? (process.platform === 'win32' ? 'codex.exe' : 'codex');
     } catch {
-      bin = 'codex';
+      bin = process.platform === 'win32' ? 'codex.exe' : 'codex';
     }
   }
   const child = spawn(bin, [...argv], {
