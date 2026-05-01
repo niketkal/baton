@@ -22,14 +22,11 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
       - run: pnpm --filter @batonai/conformance test
       - run: pnpm changeset publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: 'packages/*/dist/**/*'
