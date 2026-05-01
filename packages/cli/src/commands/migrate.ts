@@ -40,6 +40,18 @@ interface MigrateSummary {
 export async function runMigrate(opts: MigrateCommandOptions): Promise<number> {
   const start = Date.now();
   const repoRoot = opts.repo ?? process.cwd();
+  // Validate packet id BEFORE joining into a filesystem path. The flag value
+  // is untrusted; without this check, `--packet ../../foo` would let runMigrate
+  // rewrite an arbitrary JSON file outside .baton/packets/. See @batonai/store
+  // validatePacketId() for the accepted shape.
+  const validatePacketId: (id: unknown) => asserts id is string = (await import('@batonai/store'))
+    .validatePacketId;
+  try {
+    validatePacketId(opts.packet);
+  } catch (err) {
+    process.stderr.write(`baton: ${(err as Error).message}\n`);
+    return 1;
+  }
   const packetId = opts.packet;
   const packetPath = join(repoRoot, '.baton', 'packets', packetId, 'packet.json');
 

@@ -40,6 +40,18 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
   const repoRoot = opts.repo ?? process.cwd();
   const packetId = opts.packet ?? 'current-task';
 
+  // Validate packet id at the CLI boundary; even with the safe default,
+  // a user-supplied --packet value would otherwise reach collectArtifacts
+  // and downstream filesystem joins unchecked.
+  const validatePacketId: (id: unknown) => asserts id is string = (await import('@batonai/store'))
+    .validatePacketId;
+  try {
+    validatePacketId(packetId);
+  } catch (err) {
+    process.stderr.write(`baton: ${(err as Error).message}\n`);
+    return 1;
+  }
+
   if (opts.to !== undefined && !RENDER_TARGETS.includes(opts.to.toLowerCase() as RenderTarget)) {
     process.stderr.write(
       `unknown target tool: ${opts.to}. Supported: ${RENDER_TARGETS.join(', ')}\n`,

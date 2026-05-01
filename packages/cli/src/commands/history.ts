@@ -92,6 +92,12 @@ export async function buildHistoryReport(opts: HistoryOptions): Promise<HistoryR
   const { existsSync, readFileSync, readdirSync, statSync } = await import('node:fs');
   const { join } = await import('node:path');
   const repoRoot = opts.repo ?? process.cwd();
+  // Validate packet id at the CLI boundary; even read-only paths benefit
+  // from rejecting traversal so we don't leak information about files
+  // outside .baton/.
+  const validatePacketId: (id: unknown) => asserts id is string = (await import('@batonai/store'))
+    .validatePacketId;
+  validatePacketId(opts.packet);
   const packetId = opts.packet;
 
   // 1) Versions: .baton/history/packets/<id>/v*.json

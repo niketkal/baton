@@ -73,6 +73,17 @@ export async function runCompile(opts: CompileCommandOptions): Promise<number> {
   const repoRoot = opts.repo ?? process.cwd();
   const mode: CompileMode = opts.mode ?? 'fast';
 
+  // Validate packet id at the CLI boundary so a hostile flag value cannot
+  // leak into downstream filesystem joins. See @batonai/store validatePacketId().
+  const validatePacketId: (id: unknown) => asserts id is string = (await import('@batonai/store'))
+    .validatePacketId;
+  try {
+    validatePacketId(opts.packet);
+  } catch (err) {
+    process.stderr.write(`baton: ${(err as Error).message}\n`);
+    return 1;
+  }
+
   const { compile, estimateCostUsd } = await import('@batonai/compiler');
   const artifacts = collectArtifacts(repoRoot, opts.packet);
   const compileOpts: Parameters<typeof compile>[0] = {

@@ -37,3 +37,27 @@ export function assertValidPacketId(id: string): void {
     throw new Error(`Invalid packet id: ${JSON.stringify(id)} (must match ${ID_PATTERN.source})`);
   }
 }
+
+/**
+ * Validate an untrusted packet id (e.g. from a CLI flag) before joining it
+ * into a filesystem path. Narrows `id` to `string` via assertion signature
+ * so callers can use the value as-is. Throws with a human-readable message
+ * on any rejection. The accepted shape is:
+ *
+ *   ^[a-z0-9][a-z0-9._-]{1,127}$
+ *
+ * which is lowercase alphanumeric with optional `.`, `_`, `-` separators,
+ * 2–128 chars, may not start with a separator. This rejects path-traversal
+ * sequences (`../foo`), absolute paths (`/abs`), whitespace, control bytes,
+ * and any uppercase or unicode characters.
+ */
+export function validatePacketId(id: unknown): asserts id is string {
+  if (typeof id !== 'string') {
+    throw new Error(`invalid packet id: expected string, got ${typeof id}`);
+  }
+  if (!ID_PATTERN.test(id)) {
+    throw new Error(
+      `invalid packet id: ${JSON.stringify(id)} must match /^[a-z0-9][a-z0-9._-]{1,127}$/ (lowercase alphanumeric, optional separators . _ -, 2-128 chars, cannot start with separator)`,
+    );
+  }
+}

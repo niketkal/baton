@@ -50,7 +50,7 @@ describe('failover (Fix 1: lint OR schema-invalid blocks)', () => {
   it('exits 2 and skips BATON.md when lint errors but schema validates', async () => {
     const transcriptPath = join(dir, 't.md');
     writeFileSync(transcriptPath, TRANSCRIPT_FIXTURE, 'utf8');
-    expect(await runIngest('transcript', transcriptPath, { repo: dir, packet: 'p' })).toBe(0);
+    expect(await runIngest('transcript', transcriptPath, { repo: dir, packet: 'p1' })).toBe(0);
 
     const stderrCalls: string[] = [];
     const stdoutCalls: string[] = [];
@@ -65,7 +65,7 @@ describe('failover (Fix 1: lint OR schema-invalid blocks)', () => {
     const code = await runFailover({
       from: 'claude-code',
       to: 'claude-code',
-      packet: 'p',
+      packet: 'p1',
       out: 'BATON.md',
       repo: dir,
     });

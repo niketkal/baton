@@ -11,6 +11,8 @@ export {
   PROVENANCE_JSON,
   type StorePaths,
   resolvePaths,
+  assertValidPacketId,
+  validatePacketId,
 } from './paths.js';
 export {
   renderPacketMarkdown,

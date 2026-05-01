@@ -29,6 +29,25 @@ describe('cold-start performance', () => {
     }
   });
 
+  it('reports the package.json version (not the legacy 0.0.0 placeholder)', async () => {
+    if (!existsSync(BIN)) {
+      throw new Error(`expected built bin at ${BIN}; run pnpm --filter @batonai/cli build`);
+    }
+    const r = spawnSync(process.execPath, [BIN, '--version'], { encoding: 'utf8' });
+    expect(r.status).toBe(0);
+    const printed = r.stdout.trim();
+    // Real semver: major.minor.patch optionally followed by a -prerelease tag.
+    expect(printed).toMatch(/^\d+\.\d+\.\d+(?:-\S+)?$/);
+    // Cross-check against package.json so a regression to the literal
+    // '0.0.0' (or any other hardcoded value) fails loudly.
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(readFileSync(resolve(PKG_ROOT, 'package.json'), 'utf8')) as {
+      version: string;
+    };
+    expect(printed).toBe(pkg.version);
+    expect(printed).not.toBe('0.0.0');
+  });
+
   it('runs --version under the cold-start budget', () => {
     if (!existsSync(BIN)) {
       throw new Error(`expected built bin at ${BIN}; run pnpm --filter @batonai/cli build`);
