@@ -92,6 +92,12 @@ export async function buildHistoryReport(opts: HistoryOptions): Promise<HistoryR
   const { existsSync, readFileSync, readdirSync, statSync } = await import('node:fs');
   const { join } = await import('node:path');
   const repoRoot = opts.repo ?? process.cwd();
+  // Validate packet id at the CLI boundary; even read-only paths benefit
+  // from rejecting traversal so we don't leak information about files
+  // outside .baton/.
+  const validatePacketId: (id: unknown) => asserts id is string = (await import('@batonai/store'))
+    .validatePacketId;
+  validatePacketId(opts.packet);
   const packetId = opts.packet;
 
   // 1) Versions: .baton/history/packets/<id>/v*.json
@@ -228,7 +234,17 @@ export async function runHistory(opts: HistoryOptions): Promise<number> {
     process.stderr.write('history: --packet <id> is required\n');
     return 1;
   }
-  const report = await buildHistoryReport(opts);
+  // Validate at the runHistory boundary so an invalid id surfaces as
+  // exit 1 + a clean stderr message rather than a thrown rejection.
+  // buildHistoryReport also calls validatePacketId as defense-in-depth
+  // for callers that bypass runHistory (tests, internal lookups).
+  let report: HistoryReport;
+  try {
+    report = await buildHistoryReport(opts);
+  } catch (err) {
+    process.stderr.write(`baton: ${(err as Error).message}\n`);
+    return 1;
+  }
   if (opts.json === true) {
     const { renderJsonResult } = await import('../output/json.js');
     process.stdout.write(renderJsonResult(report));

@@ -133,7 +133,7 @@ describe('history', () => {
       join(eventsDir, 'dispatch.jsonl'),
       `not-json-here\n${JSON.stringify({
         id: 'r',
-        packet_id: 'p',
+        packet_id: 'p1',
         target_tool: 'codex',
         adapter: 'file',
         status: 'ok',
@@ -141,7 +141,7 @@ describe('history', () => {
       })}\n`,
       'utf8',
     );
-    const report = await buildHistoryReport({ packet: 'p', repo: dir });
+    const report = await buildHistoryReport({ packet: 'p1', repo: dir });
     expect(report.summary.dispatchCount).toBe(1);
   });
 });

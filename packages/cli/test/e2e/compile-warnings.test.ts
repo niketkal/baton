@@ -30,8 +30,8 @@ describe('compile (Fix 3: warnings in human stderr)', () => {
     const logPath = join(dir, 'l.log');
     writeFileSync(logPath, LOG_FIXTURE, 'utf8');
 
-    expect(await runIngest('transcript', transcriptPath, { repo: dir, packet: 'p' })).toBe(0);
-    expect(await runIngest('log', logPath, { repo: dir, packet: 'p' })).toBe(0);
+    expect(await runIngest('transcript', transcriptPath, { repo: dir, packet: 'p1' })).toBe(0);
+    expect(await runIngest('log', logPath, { repo: dir, packet: 'p1' })).toBe(0);
 
     const stderrCalls: string[] = [];
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((c) => {
@@ -39,7 +39,7 @@ describe('compile (Fix 3: warnings in human stderr)', () => {
       return true;
     });
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    const code = await runCompile({ packet: 'p', mode: 'fast', repo: dir });
+    const code = await runCompile({ packet: 'p1', mode: 'fast', repo: dir });
     stdoutSpy.mockRestore();
     stderrSpy.mockRestore();
 

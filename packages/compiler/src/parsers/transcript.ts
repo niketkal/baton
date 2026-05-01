@@ -36,24 +36,45 @@ interface LineInfo {
 }
 
 function splitLinesWithOffsets(content: string): LineInfo[] {
+  // Spans are documented as UTF-8 BYTE offsets (not UTF-16 code units), so
+  // provenance links into transcripts containing non-ASCII characters
+  // (em-dashes, smart quotes, CJK, emoji) point at the right bytes when a
+  // downstream consumer slices the file as a Buffer. JavaScript string
+  // indexing yields code units, so we accumulate byte cost per line via
+  // Buffer.byteLength on each slice.
   const out: LineInfo[] = [];
   const n = content.length;
   let i = 0;
+  let byteCursor = 0;
   while (i <= n) {
-    const start = i;
+    const charStart = i;
     let j = i;
     while (j < n && content[j] !== '\n' && content[j] !== '\r') j += 1;
-    out.push({ text: content.slice(start, j), start, end: j });
+    const text = content.slice(charStart, j);
+    const byteStart = byteCursor;
+    const byteEnd = byteStart + Buffer.byteLength(text, 'utf8');
+    out.push({ text, start: byteStart, end: byteEnd });
+    byteCursor = byteEnd;
     if (j >= n) break;
-    if (content[j] === '\r' && content[j + 1] === '\n') i = j + 2;
-    else i = j + 1;
+    // Advance past the line terminator and account for its bytes (always 1
+    // for "\n" or "\r"; 2 for "\r\n"). All terminators are pure ASCII so
+    // the byte cost equals the code-unit cost.
+    if (content[j] === '\r' && content[j + 1] === '\n') {
+      i = j + 2;
+      byteCursor += 2;
+    } else {
+      i = j + 1;
+      byteCursor += 1;
+    }
   }
   return out;
 }
 
 export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
   const lines = splitLinesWithOffsets(content);
-  const rawLength = content.length;
+  // rawLength is reported as a byte length so it matches the offset units
+  // used by span_start / span_end.
+  const rawLength = Buffer.byteLength(content, 'utf8');
 
   const messages: TranscriptMessage[] = [];
   let currentRole: TranscriptRole | null = null;

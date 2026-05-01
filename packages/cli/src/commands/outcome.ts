@@ -112,6 +112,17 @@ export async function runOutcomeIngest(
   const { randomUUID } = await import('node:crypto');
   const start = Date.now();
   const repoRoot = opts.repo ?? process.cwd();
+  // Validate packet id BEFORE joining into a filesystem path. The flag value
+  // is untrusted; without this check, `--packet ../../foo` would write outcome
+  // JSON outside .baton/packets/. See @batonai/store validatePacketId().
+  const validatePacketId: (id: unknown) => asserts id is string = (await import('@batonai/store'))
+    .validatePacketId;
+  try {
+    validatePacketId(opts.packet);
+  } catch (err) {
+    process.stderr.write(`baton: ${(err as Error).message}\n`);
+    return 1;
+  }
   const sourceTool = sanitizeSource(opts.source ?? 'unknown');
 
   let raw: string;

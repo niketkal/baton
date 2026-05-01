@@ -1,7 +1,32 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { registerCommands } from './commands/index.js';
 
-const VERSION = '0.0.0';
+/**
+ * Read the published CLI version from `package.json` at runtime so
+ * `baton --version` always agrees with the npm tarball metadata. Hardcoding
+ * a literal here would drift the moment a release is cut. We compute the
+ * package.json path relative to this module's URL, which works for both
+ * `dist/index.js` (package root + 1) and the source-mode test runner
+ * (`packages/cli/src/index.ts`, package root + 1).
+ */
+function readCliVersion(): string {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const pkgPath = join(here, '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: unknown };
+    if (typeof pkg.version === 'string' && pkg.version.length > 0) {
+      return pkg.version;
+    }
+  } catch {
+    // fall through to the unknown sentinel
+  }
+  return '0.0.0-unknown';
+}
+
+const VERSION = readCliVersion();
 
 /**
  * Build a fresh commander program. Cold-start sensitive: keep import
