@@ -156,6 +156,111 @@ describe('status', () => {
     expect(errs).toMatch(/unknown packet/);
   });
 
+  it('finds the latest matching event in a long journal via reverse-scan', async () => {
+    // Regression guard for the v1.0.1 perf fix: single-packet status
+    // must not be O(total events). This test seeds 1000 entries
+    // belonging to other packets and exactly one entry for the packet
+    // under test, placed near the END of the file (the realistic
+    // case: the latest event for an active packet is recent). The
+    // reverse-scan finds it in a handful of iterations.
+    const store = PacketStore.open(dir);
+    try {
+      store.create(makePacket('demo'));
+    } finally {
+      store.close();
+    }
+    const eventsDir = join(dir, '.baton', 'events');
+    mkdirSync(eventsDir, { recursive: true });
+    const dispatchPath = join(eventsDir, 'dispatch.jsonl');
+    const outcomesPath = join(eventsDir, 'outcomes.jsonl');
+    const noiseLines: string[] = [];
+    for (let i = 0; i < 1000; i++) {
+      noiseLines.push(
+        JSON.stringify({
+          id: `noise-${i}`,
+          packet_id: `other-${i}`,
+          target_tool: 'claude-code',
+          adapter: 'file',
+          status: 'ok',
+          destination: '/tmp/x',
+          created_at: `2026-01-01T00:00:${String(i % 60).padStart(2, '0')}.000Z`,
+        }),
+      );
+    }
+    // Real entry near the end (one noise line after, to prove the
+    // scan walks past trailing entries that don't match).
+    const realDispatch = JSON.stringify({
+      id: 'rcpt-real',
+      packet_id: 'demo',
+      target_tool: 'codex',
+      adapter: 'stdout',
+      status: 'ok',
+      destination: 'stdout',
+      created_at: '2026-04-28T12:00:00.000Z',
+    });
+    const trailingNoise = JSON.stringify({
+      id: 'noise-tail',
+      packet_id: 'other-tail',
+      target_tool: 'claude-code',
+      adapter: 'file',
+      status: 'ok',
+      destination: '/tmp/y',
+      created_at: '2026-04-28T13:00:00.000Z',
+    });
+    appendFileSync(
+      dispatchPath,
+      `${noiseLines.join('\n')}\n${realDispatch}\n${trailingNoise}\n`,
+      'utf8',
+    );
+    const realOutcome = JSON.stringify({
+      id: 'oc-real',
+      packet_id: 'demo',
+      source_tool: 'codex',
+      classification: 'success',
+      created_at: '2026-04-28T14:00:00.000Z',
+    });
+    appendFileSync(
+      outcomesPath,
+      `${noiseLines.map((l) => l.replace(/"target_tool"/, '"source_tool"')).join('\n')}\n${realOutcome}\n`,
+      'utf8',
+    );
+
+    const report = await buildStatusReport({ packet: 'demo', repo: dir });
+    if (report.kind !== 'packet') throw new Error('unreachable');
+    expect(report.packet.latestDispatch?.receipt_id).toBe('rcpt-real');
+    expect(report.packet.latestDispatch?.target_tool).toBe('codex');
+    expect(report.packet.latestOutcome?.outcome_id).toBe('oc-real');
+    expect(report.packet.latestOutcome?.classification).toBe('success');
+  });
+
+  it('returns no latest dispatch/outcome when only other packets have events', async () => {
+    const store = PacketStore.open(dir);
+    try {
+      store.create(makePacket('lonely'));
+    } finally {
+      store.close();
+    }
+    const eventsDir = join(dir, '.baton', 'events');
+    mkdirSync(eventsDir, { recursive: true });
+    appendFileSync(
+      join(eventsDir, 'dispatch.jsonl'),
+      `${JSON.stringify({
+        id: 'other-1',
+        packet_id: 'someone-else',
+        target_tool: 'claude-code',
+        adapter: 'file',
+        status: 'ok',
+        destination: '/tmp/z',
+        created_at: '2026-04-28T00:00:00.000Z',
+      })}\n`,
+      'utf8',
+    );
+    const report = await buildStatusReport({ packet: 'lonely', repo: dir });
+    if (report.kind !== 'packet') throw new Error('unreachable');
+    expect(report.packet.latestDispatch).toBeUndefined();
+    expect(report.packet.latestOutcome).toBeUndefined();
+  });
+
   it('emits JSON list when --json is set', async () => {
     const store = PacketStore.open(dir);
     try {

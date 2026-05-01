@@ -234,7 +234,17 @@ export async function runHistory(opts: HistoryOptions): Promise<number> {
     process.stderr.write('history: --packet <id> is required\n');
     return 1;
   }
-  const report = await buildHistoryReport(opts);
+  // Validate at the runHistory boundary so an invalid id surfaces as
+  // exit 1 + a clean stderr message rather than a thrown rejection.
+  // buildHistoryReport also calls validatePacketId as defense-in-depth
+  // for callers that bypass runHistory (tests, internal lookups).
+  let report: HistoryReport;
+  try {
+    report = await buildHistoryReport(opts);
+  } catch (err) {
+    process.stderr.write(`baton: ${(err as Error).message}\n`);
+    return 1;
+  }
   if (opts.json === true) {
     const { renderJsonResult } = await import('../output/json.js');
     process.stdout.write(renderJsonResult(report));

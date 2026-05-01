@@ -118,6 +118,51 @@ function readJsonl<T>(path: string, fs: { readFileSync(p: string, enc: 'utf8'): 
   return out;
 }
 
+/**
+ * Reverse-scan a JSONL journal for the latest entry matching
+ * `packet_id === packetId`. Returns `undefined` if no match (or the
+ * file does not exist).
+ *
+ * Single-packet status was previously O(total events) — read the
+ * whole file, parse every line, filter, then sort. For long-lived
+ * `.baton/events/*.jsonl` files that grow with every dispatch /
+ * outcome this becomes a real cliff. Append-only journals are
+ * chronological, so the latest match is the last matching line; a
+ * reverse scan finds it in O(events_until_first_match) for typical
+ * usage where a packet sees periodic activity.
+ *
+ * Worst case (the only matching event is the very first line) is
+ * still O(total) but no worse than the prior implementation. A real
+ * index (SQLite secondary table on `packet_id`) is the right fix
+ * long-term and is tracked for v1.x; this closes the immediate
+ * scaling cliff without restructuring the journal format.
+ */
+function findLatestForPacket<T extends { packet_id?: string }>(
+  jsonlPath: string,
+  packetId: string,
+  fs: { readFileSync(p: string, enc: 'utf8'): string },
+): T | undefined {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(jsonlPath, 'utf8');
+  } catch {
+    return undefined;
+  }
+  const lines = raw.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i]?.trim() ?? '';
+    if (trimmed.length === 0) continue;
+    let parsed: T;
+    try {
+      parsed = JSON.parse(trimmed) as T;
+    } catch {
+      continue;
+    }
+    if (parsed.packet_id === packetId) return parsed;
+  }
+  return undefined;
+}
+
 export async function buildStatusReport(opts: StatusOptions): Promise<StatusReport> {
   const { join } = await import('node:path');
   const { readFileSync } = await import('node:fs');
@@ -165,31 +210,19 @@ export async function buildStatusReport(opts: StatusOptions): Promise<StatusRepo
       blocking: w.blocking,
     }));
 
-    // Latest dispatch / outcome from event journals.
+    // Latest dispatch / outcome from event journals. Single-packet
+    // mode reverse-scans the file (see findLatestForPacket) so a
+    // long-lived journal does not force an O(total events) read.
+    // List mode (no --packet) genuinely needs every entry and keeps
+    // the full scan path elsewhere; this branch is single-packet only.
     const dispatchPath = join(batonDir, 'events', 'dispatch.jsonl');
     const outcomesPath = join(batonDir, 'events', 'outcomes.jsonl');
-    const dispatchRows = readJsonl<DispatchEventRow>(dispatchPath, { readFileSync }).filter(
-      (r) => r.packet_id === id,
-    );
-    const outcomeRows = readJsonl<OutcomeEventRow>(outcomesPath, { readFileSync }).filter(
-      (r) => r.packet_id === id,
-    );
-    dispatchRows.sort((a, b) =>
-      (a.created_at ?? '') < (b.created_at ?? '')
-        ? -1
-        : (a.created_at ?? '') > (b.created_at ?? '')
-          ? 1
-          : 0,
-    );
-    outcomeRows.sort((a, b) =>
-      (a.created_at ?? '') < (b.created_at ?? '')
-        ? -1
-        : (a.created_at ?? '') > (b.created_at ?? '')
-          ? 1
-          : 0,
-    );
-    const latestDispatchRow = dispatchRows[dispatchRows.length - 1];
-    const latestOutcomeRow = outcomeRows[outcomeRows.length - 1];
+    const latestDispatchRow = findLatestForPacket<DispatchEventRow>(dispatchPath, id, {
+      readFileSync,
+    });
+    const latestOutcomeRow = findLatestForPacket<OutcomeEventRow>(outcomesPath, id, {
+      readFileSync,
+    });
 
     const detail: StatusPacketDetail = {
       ...summary,

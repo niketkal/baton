@@ -21,6 +21,55 @@ interface SpawnResult {
   stderr: string;
 }
 
+/**
+ * Environment variables we allow to flow from the conformance host
+ * process into the target CLI under test. The conformance harness can
+ * be pointed at arbitrary third-party binaries (e.g. `baton conformance
+ * --against <bin>`); cloning the full `process.env` would expose any
+ * secrets the user happens to have set — `OPENAI_API_KEY`,
+ * `ANTHROPIC_API_KEY`, `NPM_TOKEN`, `GH_TOKEN`, cloud credentials,
+ * etc. — to that binary.
+ *
+ * The allowlist below covers what real CLIs need to function (PATH,
+ * HOME, locale, terminal capability, Windows equivalents) and a small
+ * number of explicit baton-side opt-ins. Conformance cases must not
+ * depend on inheriting LLM credentials or registry tokens; if a future
+ * case genuinely needs one, declare it explicitly in `case.json` and
+ * extend the runner to opt-in pass it. None of the v1 cases need this.
+ */
+const SAFE_ENV_KEYS: readonly string[] = [
+  'PATH',
+  'HOME',
+  'USER',
+  'SHELL',
+  'TMPDIR',
+  'TEMP',
+  'TMP',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'TERM',
+  'COLUMNS',
+  'LINES',
+  'NO_COLOR',
+  'PATHEXT',
+  'COMSPEC',
+  'SYSTEMROOT',
+  'USERPROFILE',
+  'BATON_REPO_ROOT',
+  'BATON_LOG_LEVEL',
+];
+
+export function safeEnv(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of SAFE_ENV_KEYS) {
+    const value = process.env[key];
+    if (typeof value === 'string') out[key] = value;
+  }
+  out.NO_COLOR = '1';
+  return out;
+}
+
 function runNode(
   binPath: string,
   args: string[],
@@ -30,7 +79,7 @@ function runNode(
   return new Promise((resolveRun, rejectRun) => {
     const child = spawn(process.execPath, [binPath, ...args], {
       cwd,
-      env: { ...process.env, NO_COLOR: '1' },
+      env: safeEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';

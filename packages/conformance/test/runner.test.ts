@@ -2,7 +2,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadCases } from '../src/cases/index.js';
-import { comparePartialPacket, runConformance } from '../src/runner.js';
+import { comparePartialPacket, runConformance, safeEnv } from '../src/runner.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MOCK_BIN = resolve(HERE, 'fixtures', 'mock-bin.mjs');
@@ -32,6 +32,66 @@ describe('runConformance against the mock binary', () => {
     expect(report.failed).toBe(1);
     expect(report.results[0]?.failures.some((f) => f.includes('lint'))).toBe(true);
   }, 30_000);
+});
+
+describe('safeEnv (conformance harness env allowlist)', () => {
+  // Secrets the harness must never propagate into the target binary.
+  // Listed explicitly so a future refactor that accidentally re-adds
+  // `{ ...process.env }` regresses this test loudly.
+  const SECRET_KEYS = [
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'GOOGLE_API_KEY',
+    'NPM_TOKEN',
+    'GITHUB_TOKEN',
+    'GH_TOKEN',
+    'AWS_SECRET_ACCESS_KEY',
+    'AWS_SESSION_TOKEN',
+    'BATON_CODEX_BIN',
+    'BATON_CLAUDE_BIN',
+  ];
+
+  it('does not leak secret env vars to the target binary', () => {
+    const previous: Record<string, string | undefined> = {};
+    for (const key of SECRET_KEYS) {
+      previous[key] = process.env[key];
+      process.env[key] = `canary-${key}`;
+    }
+    try {
+      const env = safeEnv();
+      for (const key of SECRET_KEYS) {
+        expect(env[key], `expected ${key} to be stripped from target env`).toBeUndefined();
+      }
+      // Sanity: PATH still passes so the target can still resolve
+      // executables, and NO_COLOR is forced on.
+      expect(env.PATH).toBeDefined();
+      expect(env.NO_COLOR).toBe('1');
+    } finally {
+      for (const key of SECRET_KEYS) {
+        const prior = previous[key];
+        if (prior === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = prior;
+        }
+      }
+    }
+  });
+
+  it('forces NO_COLOR=1 even when the host has a different value set', () => {
+    const prior = process.env.NO_COLOR;
+    process.env.NO_COLOR = '';
+    try {
+      expect(safeEnv().NO_COLOR).toBe('1');
+    } finally {
+      if (prior === undefined) {
+        // biome-ignore lint/performance/noDelete: env vars must be unset
+        delete process.env.NO_COLOR;
+      } else {
+        process.env.NO_COLOR = prior;
+      }
+    }
+  });
 });
 
 describe('comparePartialPacket', () => {
