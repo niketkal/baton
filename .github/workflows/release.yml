@@ -22,6 +22,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
