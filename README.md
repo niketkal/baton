@@ -136,6 +136,26 @@ from `--help`.
 
 ---
 
+### Command quick reference
+
+| Command | When to reach for it |
+|---|---|
+| `baton init` | Once per project, after installing the CLI. Sets up per-tool hooks (Claude Code, Codex, Cursor) and creates `.baton/`. |
+| `baton failover --to <tool>` | The headline command. Hand the current session off to another tool (compaction, rate limit, tool switch, EOD checkpoint). |
+| `baton ingest <kind> <path> --packet <id>` | Manually feed a transcript, log, diff, ticket, or note into a packet. Hooks do this automatically; reach for it when you have an artifact a hook didn't capture. |
+| `baton compile --packet <id>` | Rebuild a packet from its registered artifacts without firing failover. Mostly for CI or scripted flows. |
+| `baton lint --packet <id>` | Verify a packet against BTN001–BTN060 before sharing or shipping. Add `--strict` for certification. |
+| `baton render --packet <id> --target <name>` | Get a target-specific handoff string without copying or dispatching. Use when piping into a custom script. |
+| `baton dispatch <packet> --target <name> --adapter <name>` | Send an already-prepared packet through a specific adapter (clipboard, file, shell, stdout). |
+| `baton outcome ingest <packet> <path> --source <tool>` | Close the loop: record CI failures, review feedback, completion notes back into the packet's history. |
+| `baton status` | See all packets in this project at a glance (status, warnings, last update). |
+| `baton history --packet <id>` | See the version, dispatch, and outcome timeline for one packet. |
+| `baton conformance` | Validate this CLI (or another implementation via `--against`) satisfies the public Baton contract. Run before publishing a fork. |
+| `baton migrate --packet <id>` | Bring an old packet up to the current schema version. No-op for v1→v1. |
+| `baton uninstall <integration>` or `--all` | Remove per-tool hook files. Does not delete `.baton/`. |
+
+---
+
 ### CLI conventions
 
 A few patterns repeat across commands. Knowing them up front prevents
