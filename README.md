@@ -7,17 +7,105 @@ transcripts, logs, diffs, and tickets into a structured, lint-validated
 **packet** — a small, durable artifact that the next tool can pick up and act
 on without a human re-explaining the work.
 
-Use Baton when:
-
-- a session compacts, restarts, or hits a rate limit and you need to resume
-  cleanly in the same tool or a different one
-- you want one tool to investigate and another to execute without losing the
-  failed-attempt history, constraints, and acceptance criteria
-- you want CI failures, review feedback, or tickets to flow back into an
-  in-flight task without manual re-entry
-
 > **Status:** v1.0 — packet schema, CLI contract, and lint rules are stable
 > public surfaces. Schema changes require an ADR.
+
+## When to use Baton
+
+Baton solves one problem: **the moment of context loss between AI coding
+sessions or tools**. Concrete scenarios:
+
+### Scenario 1 — Your Claude Code session is about to compact
+
+You're 40 messages into a feature. Claude warns it's about to compact.
+You know the summary will lose the three failed attempts and the
+half-finished test plan you've been iterating on.
+
+```bash
+baton failover --to claude-code --copy
+# → packet captures objective, current state, attempts, constraints
+# → paste into the new session post-compaction
+```
+
+The native Claude Code hook (installed by `baton init`) actually does this
+automatically — the manual command is for when you want to control timing.
+
+### Scenario 2 — You hit a rate limit and want to switch tools
+
+Mid-refactor, you're rate-limited on Claude. Codex has quota. You don't
+want to re-explain what you've tried.
+
+```bash
+baton failover --to codex --copy
+# → renders the packet in Codex's preferred format (TASK / CONTEXT / NEXT ACTION)
+# → paste into Codex and continue
+```
+
+### Scenario 3 — Use the right tool for the right phase
+
+Claude is great at exploration and design. Codex is great at mechanical
+refactors. Cursor is great at inline edits in a known file. You want the
+tools to relay to each other without you being the relay.
+
+```bash
+# After Claude finishes the design exploration:
+baton failover --to codex --copy        # hand the spec to Codex to implement
+# After Codex finishes the implementation:
+baton failover --to cursor --copy       # hand to Cursor for fine-tuning
+```
+
+### Scenario 4 — Resume a multi-day feature
+
+You shipped half a feature on Monday. It's Thursday. The session is gone,
+the branch is half-done, and you'd lose 20 minutes re-reading the diff.
+
+```bash
+baton status                           # lists all packets, find feature-x
+baton failover --to claude-code --packet feature-x --copy
+```
+
+### Scenario 5 — CI failure feeds back into the packet
+
+The PR Claude opened on Monday failed CI on Tuesday. You want the failure
+context to be visible the next time you (or a tool) opens the packet.
+
+```bash
+gh run view <run-id> --log-failed > /tmp/ci-failure.log
+baton outcome ingest feature-x /tmp/ci-failure.log --source ci
+# → next failover surfaces the CI failure in the packet's history
+```
+
+### Scenario 6 — Hand off to a teammate (or future-you)
+
+Pair work, async handoff, or end-of-day checkpoint. The packet is
+plain JSON + Markdown — commit `.baton/packets/feature-x/` and your
+teammate runs:
+
+```bash
+baton failover --to <their-preferred-tool> --packet feature-x --copy
+```
+
+### Scenario 7 — Ticket → AI
+
+A Linear/Jira ticket has the full spec. You don't want to paraphrase it
+into the chat box.
+
+```bash
+mkdir -p .baton/packets/ticket-1234/artifacts
+linear issue view ENG-1234 --comments > .baton/packets/ticket-1234/artifacts/ticket.md
+baton compile --packet ticket-1234 --mode full     # uses your LLM key
+baton failover --to claude-code --packet ticket-1234 --copy
+```
+
+### When NOT to reach for Baton
+
+- One-shot questions ("what does this regex do?") — just ask the tool
+- Trivial work that fits in one un-compacted session
+- Greenfield "write me a script that…" with no surrounding context
+
+The cost of Baton is `baton init` once per project plus one CLI call per
+handoff. It pays for itself the moment you'd have re-typed context to a
+fresh session.
 
 ## Install
 
