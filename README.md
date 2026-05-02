@@ -92,7 +92,7 @@ into the chat box.
 
 ```bash
 linear issue view ENG-1234 --comments > /tmp/ticket.md
-baton ingest ticket /tmp/ticket.md --packet ticket-1234
+baton ingest issue /tmp/ticket.md --packet ticket-1234
 baton compile --packet ticket-1234 --mode full     # uses your LLM key
 baton failover --to claude-code --packet ticket-1234 --copy
 ```
@@ -229,8 +229,8 @@ baton compile --packet test-001 --mode fast    # deterministic, no LLM call
 baton compile --packet test-001 --mode full    # LLM-assisted synthesis (uses BYOK key)
 ```
 
-Valid `<kind>` values match the schema (`transcript`, `log`, `diff`,
-`ticket`, etc.). `--fast` is the default and what hooks use. `--full`
+Valid `<kind>` values: `transcript`, `log`, `diff`, `issue`, `note`,
+`image`, `test-report`. `--fast` is the default and what hooks use. `--full`
 requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set.
 
 ### 6. Render a packet for a specific target — `baton render`
