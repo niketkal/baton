@@ -151,9 +151,10 @@ A few patterns repeat across commands. Knowing them up front prevents
   `.baton/packets/<id>/artifacts/`. Hooks drop them there automatically;
   for manual repro you create the dir yourself (see
   [Manual compile](#5-manual-compile-rare) below).
-- **`baton failover --to <tool>` picks the most recent active packet
-  unless you pass `--packet <id>`.** Useful for "resume my current work";
-  surprising if you have multiple packets.
+- **`baton failover --to <tool>` defaults `--packet` to the literal
+  `current-task`.** Hooks create/update a packet by that name on each
+  session, so the default works for the headline "resume my current
+  work" flow. Pass `--packet <id>` to target a specific packet.
 - **Logs are redacted by default.** Set `BATON_LOG_LEVEL=debug-unsafe` only
   if you need raw artifact content in logs (prints a banner; never set in
   CI).
@@ -244,12 +245,16 @@ baton render --packet feature-x --target generic > handoff.md
 ### 7. Push a packet to the next tool — `baton dispatch`
 
 ```bash
-baton dispatch --packet feature-x --to codex
+baton dispatch feature-x --target codex --adapter clipboard      # to clipboard
+baton dispatch feature-x --target codex --adapter stdout         # to stdout
+baton dispatch feature-x --target codex --adapter file --out handoff.md
+baton dispatch feature-x --target codex --adapter shell --shell-cmd "pbcopy"
 ```
 
-Wraps render + the appropriate adapter (clipboard, stdout, shell, file).
-Use `failover` for the common case; use `dispatch` when you've already
-prepared the packet and just want to send it.
+Positional `<packet>`, separate `--target` (renderer) and `--adapter`
+(transport) flags. Use `failover` for the common case; use `dispatch`
+when you've already prepared the packet and just want to send it through
+a specific adapter.
 
 ### 8. Close the loop — `baton outcome ingest`
 
