@@ -91,8 +91,8 @@ A Linear/Jira ticket has the full spec. You don't want to paraphrase it
 into the chat box.
 
 ```bash
-mkdir -p .baton/packets/ticket-1234/artifacts
-linear issue view ENG-1234 --comments > .baton/packets/ticket-1234/artifacts/ticket.md
+linear issue view ENG-1234 --comments > /tmp/ticket.md
+baton ingest ticket /tmp/ticket.md --packet ticket-1234
 baton compile --packet ticket-1234 --mode full     # uses your LLM key
 baton failover --to claude-code --packet ticket-1234 --copy
 ```
@@ -142,15 +142,16 @@ A few patterns repeat across commands. Knowing them up front prevents
 "unknown command" / "required option" errors:
 
 - **Packet IDs are passed differently per command.** Positional for
-  `outcome ingest <id>`; flag (`--packet <id>`) for `compile`, `lint`,
-  `render`, `history`, `migrate`, `dispatch`. Run `baton <cmd> --help` if
-  unsure.
+  `outcome ingest <id>` and `dispatch <id>`; flag (`--packet <id>`) for
+  `compile`, `lint`, `render`, `history`, `migrate`, `ingest`. Run
+  `baton <cmd> --help` if unsure.
 - **Packet IDs validate to `/^[a-z0-9][a-z0-9._-]{1,127}$/`.** No
   uppercase, no slashes, no `..`. Path traversal attempts are rejected.
-- **`baton compile` does NOT take `--artifact`.** Artifacts live under
-  `.baton/packets/<id>/artifacts/`. Hooks drop them there automatically;
-  for manual repro you create the dir yourself (see
-  [Manual compile](#5-manual-compile-rare) below).
+- **Artifacts must be ingested before compile.** Use `baton ingest <kind>
+  <source-path> --packet <id>` to register a transcript, log, diff, or
+  ticket. Ingest writes to `.baton/artifacts/<uuid>/` with a
+  `metadata.json` sidecar; `compile` walks that directory and ignores any
+  files not registered through `ingest`.
 - **`baton failover --to <tool>` defaults `--packet` to the literal
   `current-task`.** Hooks create/update a packet by that name on each
   session, so the default works for the headline "resume my current
@@ -213,22 +214,24 @@ baton lint --packet feature-x --strict # strict mode for certification
 Runs BTN001–BTN060 against the packet. `--strict` is what the conformance
 suite uses; default mode lets warnings through so failover stays fast.
 
-### 5. Manual compile — `baton compile` (rare)
+### 5. Manual ingest + compile — `baton ingest` / `baton compile` (rare)
 
-Hooks compile automatically. Run `compile` directly when you want to
-rebuild a packet from updated artifacts without firing failover:
+Hooks ingest and compile automatically. To do it by hand (e.g., feeding a
+log file or ticket into a packet):
 
 ```bash
-# Set up an artifact (hooks normally do this for you)
-mkdir -p .baton/packets/test-001/artifacts
-printf "user: build a feature\nassistant: ok\n" > .baton/packets/test-001/artifacts/transcript.txt
+# 1. Register the artifact under .baton/artifacts/<uuid>/ with metadata
+printf "user: build a feature\nassistant: ok\n" > /tmp/sample.txt
+baton ingest transcript /tmp/sample.txt --packet test-001
 
+# 2. Compile the packet from all artifacts registered to it
 baton compile --packet test-001 --mode fast    # deterministic, no LLM call
-baton compile --packet test-001 --mode full    # LLM-assisted synthesis (uses your BYOK key)
+baton compile --packet test-001 --mode full    # LLM-assisted synthesis (uses BYOK key)
 ```
 
-`--fast` is the default and what hooks use. `--full` requires
-`ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set.
+Valid `<kind>` values match the schema (`transcript`, `log`, `diff`,
+`ticket`, etc.). `--fast` is the default and what hooks use. `--full`
+requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set.
 
 ### 6. Render a packet for a specific target — `baton render`
 
@@ -271,12 +274,13 @@ Note: positional `<packet>` and `<path>`; `--source` flag.
 ### 9. Run conformance — `baton conformance`
 
 ```bash
-baton conformance                      # full public suite
-baton conformance --case feature-implementation
+baton conformance                                       # run against this CLI
+baton conformance --against /path/to/other/baton-bin    # validate another implementation
+baton conformance --cases-dir ./my-cases                # use a custom case directory
 ```
 
-Validates that this CLI implementation satisfies the published Baton
-contract. Useful if you fork or write a compatible implementation.
+Validates that the targeted CLI satisfies the published Baton contract.
+Useful if you fork or write a compatible implementation.
 
 ### 10. Schema migrations — `baton migrate`
 
@@ -289,12 +293,14 @@ No-op for v1→v1 today; in place for future schema versions.
 ### 11. Tear down — `baton uninstall`
 
 ```bash
-baton uninstall --dry-run              # preview what would be removed
-baton uninstall                        # remove integrations + per-tool hooks
+baton uninstall claude-code            # remove a specific integration
+baton uninstall --all                  # remove all integrations
+baton uninstall --all --dry-run        # preview without writing
 ```
 
-Removes the per-tool hook files installed by `init`. Does NOT delete
-`.baton/` (your packet history is yours).
+Requires either an integration name (`claude-code`, `codex`, `cursor`) or
+`--all`. Removes the per-tool hook files installed by `init`. Does NOT
+delete `.baton/` (your packet history is yours).
 
 ## What ships in v1
 
