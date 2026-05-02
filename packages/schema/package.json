@@ -17,7 +17,11 @@
     },
     "./packet.schema.json": "./packet.schema.json"
   },
-  "files": ["dist", "packet.schema.json", "README.md"],
+  "files": [
+    "dist",
+    "packet.schema.json",
+    "README.md"
+  ],
   "scripts": {
     "codegen": "json2ts -i packet.schema.json -o src/types.ts --no-additionalProperties",
     "build": "tsup src/index.ts src/migrate.ts --format esm --dts --clean",
@@ -30,5 +34,14 @@
   },
   "devDependencies": {
     "json-schema-to-typescript": "15.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niketkal/baton.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://github.com/niketkal/baton#readme",
+  "bugs": {
+    "url": "https://github.com/niketkal/baton/issues"
   }
 }

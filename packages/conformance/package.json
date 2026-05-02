@@ -15,7 +15,12 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "cases", "benchmark", "README.md"],
+  "files": [
+    "dist",
+    "cases",
+    "benchmark",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup src/index.ts src/bin/baton-conformance.ts --format esm --dts --clean --target node20",
     "test": "vitest run",
@@ -26,5 +31,14 @@
     "@batonai/render": "workspace:*",
     "@batonai/schema": "workspace:*",
     "commander": "12.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niketkal/baton.git",
+    "directory": "packages/conformance"
+  },
+  "homepage": "https://github.com/niketkal/baton#readme",
+  "bugs": {
+    "url": "https://github.com/niketkal/baton/issues"
   }
 }
