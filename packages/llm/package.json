@@ -46,5 +46,14 @@
     "openai": {
       "optional": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niketkal/baton.git",
+    "directory": "packages/llm"
+  },
+  "homepage": "https://github.com/niketkal/baton#readme",
+  "bugs": {
+    "url": "https://github.com/niketkal/baton/issues"
   }
 }

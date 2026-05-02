@@ -26,5 +26,14 @@
     "@batonai/render": "workspace:*",
     "@batonai/schema": "workspace:*",
     "commander": "12.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niketkal/baton.git",
+    "directory": "packages/conformance"
+  },
+  "homepage": "https://github.com/niketkal/baton#readme",
+  "bugs": {
+    "url": "https://github.com/niketkal/baton/issues"
   }
 }
