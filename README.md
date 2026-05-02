@@ -7,53 +7,320 @@ transcripts, logs, diffs, and tickets into a structured, lint-validated
 **packet** — a small, durable artifact that the next tool can pick up and act
 on without a human re-explaining the work.
 
-Use Baton when:
+> **Status:** v1.0 — packet schema, CLI contract, and lint rules are stable
+> public surfaces. Schema changes require an ADR.
 
-- a session compacts, restarts, or hits a rate limit and you need to resume
-  cleanly in the same tool or a different one
-- you want one tool to investigate and another to execute without losing the
-  failed-attempt history, constraints, and acceptance criteria
-- you want CI failures, review feedback, or tickets to flow back into an
-  in-flight task without manual re-entry
+## When to use Baton
 
-> **Status:** pre-v1. The packet schema, CLI contract, and lint rules are the
-> public surface and are being stabilized. Don't depend on this in production
-> yet.
+Baton solves one problem: **the moment of context loss between AI coding
+sessions or tools**. Concrete scenarios:
+
+### Scenario 1 — Your Claude Code session is about to compact
+
+You're 40 messages into a feature. Claude warns it's about to compact.
+You know the summary will lose the three failed attempts and the
+half-finished test plan you've been iterating on.
+
+```bash
+baton failover --to claude-code --copy
+# → packet captures objective, current state, attempts, constraints
+# → paste into the new session post-compaction
+```
+
+The native Claude Code hook (installed by `baton init`) actually does this
+automatically — the manual command is for when you want to control timing.
+
+### Scenario 2 — You hit a rate limit and want to switch tools
+
+Mid-refactor, you're rate-limited on Claude. Codex has quota. You don't
+want to re-explain what you've tried.
+
+```bash
+baton failover --to codex --copy
+# → renders the packet in Codex's preferred format (TASK / CONTEXT / NEXT ACTION)
+# → paste into Codex and continue
+```
+
+### Scenario 3 — Use the right tool for the right phase
+
+Claude is great at exploration and design. Codex is great at mechanical
+refactors. Cursor is great at inline edits in a known file. You want the
+tools to relay to each other without you being the relay.
+
+```bash
+# After Claude finishes the design exploration:
+baton failover --to codex --copy        # hand the spec to Codex to implement
+# After Codex finishes the implementation:
+baton failover --to cursor --copy       # hand to Cursor for fine-tuning
+```
+
+### Scenario 4 — Resume a multi-day feature
+
+You shipped half a feature on Monday. It's Thursday. The session is gone,
+the branch is half-done, and you'd lose 20 minutes re-reading the diff.
+
+```bash
+baton status                           # lists all packets, find feature-x
+baton failover --to claude-code --packet feature-x --copy
+```
+
+### Scenario 5 — CI failure feeds back into the packet
+
+The PR Claude opened on Monday failed CI on Tuesday. You want the failure
+context to be visible the next time you (or a tool) opens the packet.
+
+```bash
+gh run view <run-id> --log-failed > /tmp/ci-failure.log
+baton outcome ingest feature-x /tmp/ci-failure.log --source ci
+# → next failover surfaces the CI failure in the packet's history
+```
+
+### Scenario 6 — Hand off to a teammate (or future-you)
+
+Pair work, async handoff, or end-of-day checkpoint. The packet is
+plain JSON + Markdown — commit `.baton/packets/feature-x/` and your
+teammate runs:
+
+```bash
+baton failover --to <their-preferred-tool> --packet feature-x --copy
+```
+
+### Scenario 7 — Ticket → AI
+
+A Linear/Jira ticket has the full spec. You don't want to paraphrase it
+into the chat box.
+
+```bash
+linear issue view ENG-1234 --comments > /tmp/ticket.md
+baton ingest issue /tmp/ticket.md --packet ticket-1234
+baton compile --packet ticket-1234 --mode full     # uses your LLM key
+baton failover --to claude-code --packet ticket-1234 --copy
+```
+
+### When NOT to reach for Baton
+
+- One-shot questions ("what does this regex do?") — just ask the tool
+- Trivial work that fits in one un-compacted session
+- Greenfield "write me a script that…" with no surrounding context
+
+The cost of Baton is `baton init` once per project plus one CLI call per
+handoff. It pays for itself the moment you'd have re-typed context to a
+fresh session.
+
+## Install
+
+```bash
+npm install -g @batonai/cli
+baton --version    # 1.0.1
+```
+
+Requires Node.js 20+.
 
 ## Quickstart
 
-> **Pre-v1:** Baton is not yet published to npm. The instructions below
-> build from source. Once v1.0.0 ships, `npm install -g @batonai/cli` will
-> work directly and the quickstart will collapse to a single command.
+The fastest path: drop into a project where you've been working with an AI
+coding tool, install Baton, and use `failover` to compile your latest
+session into a handoff for the next tool.
 
 ```bash
-# 1. Clone and build
-git clone https://github.com/niketkal/baton.git
-cd baton
-pnpm install
-pnpm -r build
-
-# 2. Run the CLI directly (prints `0.0.0` until v1.0.0 is tagged)
-node packages/cli/dist/bin.js --version
-
-# 3. (Optional, macOS/Linux) Symlink as `baton` on your PATH.
-# On Windows, invoke `node packages\cli\dist\bin.js` directly or
-# create a `.cmd` shim that does the same.
-ln -s "$(pwd)/packages/cli/dist/bin.js" /usr/local/bin/baton
-chmod +x /usr/local/bin/baton
-
-# 4. Use it
-baton init                               # set up integrations in your project
-baton failover --from claude-code --to codex --packet current-task --copy
+cd ~/your-project
+baton init                                    # one-time per project
+baton failover --to codex --copy              # compile + render + clipboard
 ```
 
-`baton failover` reads your latest artifacts, compiles a packet, runs
-non-strict lint, renders a target-specific handoff, and copies it to your
-clipboard. Paste it into the next tool and continue.
+Paste into Codex (or whichever tool) and continue.
 
-The npm and `npx @batonai/cli ...` paths described in
-[ADR 0007](docs/adr/0007-distribution-npm-brew.md) become available once
-v1.0.0 is published.
+That's the headline flow. The sections below walk through every command and
+show the exact CLI shape — including the conventions that aren't obvious
+from `--help`.
+
+---
+
+### Command quick reference
+
+| Command | When to reach for it |
+|---|---|
+| `baton init` | Once per project, after installing the CLI. Sets up per-tool hooks (Claude Code, Codex, Cursor) and creates `.baton/`. |
+| `baton failover --to <tool>` | The headline command. Hand the current session off to another tool (compaction, rate limit, tool switch, EOD checkpoint). |
+| `baton ingest <kind> <path> --packet <id>` | Manually feed a transcript, log, diff, ticket, or note into a packet. Hooks do this automatically; reach for it when you have an artifact a hook didn't capture. |
+| `baton compile --packet <id>` | Rebuild a packet from its registered artifacts without firing failover. Mostly for CI or scripted flows. |
+| `baton lint --packet <id>` | Verify a packet against BTN001–BTN060 before sharing or shipping. Add `--strict` for certification. |
+| `baton render --packet <id> --target <name>` | Get a target-specific handoff string without copying or dispatching. Use when piping into a custom script. |
+| `baton dispatch <packet> --target <name> --adapter <name>` | Send an already-prepared packet through a specific adapter (clipboard, file, shell, stdout). |
+| `baton outcome ingest <packet> <path> --source <tool>` | Close the loop: record CI failures, review feedback, completion notes back into the packet's history. |
+| `baton status` | See all packets in this project at a glance (status, warnings, last update). |
+| `baton history --packet <id>` | See the version, dispatch, and outcome timeline for one packet. |
+| `baton conformance` | Validate this CLI (or another implementation via `--against`) satisfies the public Baton contract. Run before publishing a fork. |
+| `baton migrate --packet <id>` | Bring an old packet up to the current schema version. No-op for v1→v1. |
+| `baton uninstall <integration>` or `--all` | Remove per-tool hook files. Does not delete `.baton/`. |
+
+---
+
+### CLI conventions
+
+A few patterns repeat across commands. Knowing them up front prevents
+"unknown command" / "required option" errors:
+
+- **Packet IDs are passed differently per command.** Positional for
+  `outcome ingest <id>` and `dispatch <id>`; flag (`--packet <id>`) for
+  `compile`, `lint`, `render`, `history`, `migrate`, `ingest`. Run
+  `baton <cmd> --help` if unsure.
+- **Packet IDs validate to `/^[a-z0-9][a-z0-9._-]{1,127}$/`.** No
+  uppercase, no slashes, no `..`. Path traversal attempts are rejected.
+- **Artifacts must be ingested before compile.** Use `baton ingest <kind>
+  <source-path> --packet <id>` to register a transcript, log, diff, or
+  ticket. Ingest writes to `.baton/artifacts/<uuid>/` with a
+  `metadata.json` sidecar; `compile` walks that directory and ignores any
+  files not registered through `ingest`.
+- **`baton failover --to <tool>` defaults `--packet` to the literal
+  `current-task`.** Hooks create/update a packet by that name on each
+  session, so the default works for the headline "resume my current
+  work" flow. Pass `--packet <id>` to target a specific packet.
+- **Logs are redacted by default.** Set `BATON_LOG_LEVEL=debug-unsafe` only
+  if you need raw artifact content in logs (prints a banner; never set in
+  CI).
+
+---
+
+### 1. Set up Baton in a project — `baton init`
+
+```bash
+baton init
+```
+
+Detects which AI tools are present (Claude Code, Codex, Cursor) and offers
+to install per-tool integrations:
+
+- **Claude Code** — native hooks (pre-compaction, session-end,
+  limit-warning) under `~/.claude/plugins/baton/`
+- **Codex CLI** — wrapper launcher at `~/.local/bin/baton-codex`
+- **Cursor** — paste-only flow (no files installed; you `render --copy`
+  and paste into chat)
+
+Adds `.baton/` to the project (canonical state, redacted logs, SQLite
+cache). Safe to commit `.baton/packets/` if you want shared handoffs;
+gitignore `.baton/state.db` and `.baton/logs/`.
+
+### 2. Hand off to the next tool — `baton failover`
+
+The headline command. Reads the most recent artifacts that hooks have
+captured, compiles a packet (in `--fast` mode, no LLM call, < 5s on a warm
+cache), lints it, renders a target-specific handoff, and prints it
+(or copies to clipboard with `--copy`).
+
+```bash
+baton failover --to codex             # picks current packet
+baton failover --to codex --copy      # also copy to clipboard
+baton failover --to cursor --copy     # cursor target uses paste-only flow
+baton failover --to claude-code --packet feature-x   # specific packet
+```
+
+Targets: `claude-code`, `codex`, `cursor`, `generic`.
+
+### 3. Inspect state — `baton status` / `baton history`
+
+```bash
+baton status                           # all packets, status, warnings, last update
+baton history --packet feature-x       # versions, dispatches, outcomes for one packet
+```
+
+### 4. Lint a packet — `baton lint`
+
+```bash
+baton lint --packet feature-x          # warnings only (non-blocking)
+baton lint --packet feature-x --strict # strict mode for certification
+```
+
+Runs BTN001–BTN060 against the packet. `--strict` is what the conformance
+suite uses; default mode lets warnings through so failover stays fast.
+
+### 5. Manual ingest + compile — `baton ingest` / `baton compile` (rare)
+
+Hooks ingest and compile automatically. To do it by hand (e.g., feeding a
+log file or ticket into a packet):
+
+```bash
+# 1. Register the artifact under .baton/artifacts/<uuid>/ with metadata
+printf "user: build a feature\nassistant: ok\n" > /tmp/sample.txt
+baton ingest transcript /tmp/sample.txt --packet test-001
+
+# 2. Compile the packet from all artifacts registered to it
+baton compile --packet test-001 --mode fast    # deterministic, no LLM call
+baton compile --packet test-001 --mode full    # LLM-assisted synthesis (uses BYOK key)
+```
+
+Valid `<kind>` values: `transcript`, `log`, `diff`, `issue`, `note`,
+`image`, `test-report`. `--fast` is the default and what hooks use. `--full`
+requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set.
+
+### 6. Render a packet for a specific target — `baton render`
+
+When failover isn't the right shape (e.g., piping into a script or
+generating multiple handoffs):
+
+```bash
+baton render --packet feature-x --target claude-code
+baton render --packet feature-x --target codex
+baton render --packet feature-x --target cursor --copy
+baton render --packet feature-x --target generic > handoff.md
+```
+
+### 7. Push a packet to the next tool — `baton dispatch`
+
+```bash
+baton dispatch feature-x --target codex --adapter clipboard      # to clipboard
+baton dispatch feature-x --target codex --adapter stdout         # to stdout
+baton dispatch feature-x --target codex --adapter file --out handoff.md
+baton dispatch feature-x --target codex --adapter shell --shell-cmd "pbcopy"
+```
+
+Positional `<packet>`, separate `--target` (renderer) and `--adapter`
+(transport) flags. Use `failover` for the common case; use `dispatch`
+when you've already prepared the packet and just want to send it through
+a specific adapter.
+
+### 8. Close the loop — `baton outcome ingest`
+
+After the next tool finishes work, record what happened so the packet's
+history reflects reality:
+
+```bash
+echo '{"status":"completed","summary":"shipped feature X"}' > /tmp/outcome.json
+baton outcome ingest feature-x /tmp/outcome.json --source codex
+```
+
+Note: positional `<packet>` and `<path>`; `--source` flag.
+
+### 9. Run conformance — `baton conformance`
+
+```bash
+baton conformance                                       # run against this CLI
+baton conformance --against /path/to/other/baton-bin    # validate another implementation
+baton conformance --cases-dir ./my-cases                # use a custom case directory
+```
+
+Validates that the targeted CLI satisfies the published Baton contract.
+Useful if you fork or write a compatible implementation.
+
+### 10. Schema migrations — `baton migrate`
+
+```bash
+baton migrate --packet feature-x       # bring an old packet up to current schema
+```
+
+No-op for v1→v1 today; in place for future schema versions.
+
+### 11. Tear down — `baton uninstall`
+
+```bash
+baton uninstall claude-code            # remove a specific integration
+baton uninstall --all                  # remove all integrations
+baton uninstall --all --dry-run        # preview without writing
+```
+
+Requires either an integration name (`claude-code`, `codex`, `cursor`) or
+`--all`. Removes the per-tool hook files installed by `init`. Does NOT
+delete `.baton/` (your packet history is yours).
 
 ## What ships in v1
 
