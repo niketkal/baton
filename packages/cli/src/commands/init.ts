@@ -112,6 +112,18 @@ export async function runInit(opts: InitOptions): Promise<number> {
     try {
       await integration.install({ repoRoot });
       process.stdout.write('  installed.\n');
+      // Per-integration "how to actually use this" tip. Without these
+      // hints users assume install = automatic; for codex they have to
+      // launch the wrapper, for cursor they have to manually copy/paste.
+      if (integration.id === 'codex') {
+        process.stdout.write(
+          '  hint: run `baton-codex` instead of `codex` for hooks to fire (or alias it in your shell profile).\n',
+        );
+      } else if (integration.id === 'cursor') {
+        process.stdout.write(
+          '  hint: cursor is paste-only — `baton failover --to cursor --copy` then paste into chat.\n',
+        );
+      }
       installed++;
     } catch (err) {
       process.stderr.write(`- ${integration.id}: install failed: ${(err as Error).message}\n`);
