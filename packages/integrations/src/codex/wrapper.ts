@@ -6,7 +6,8 @@
  * marker hit we:
  *
  *   1. Forward the chunk to the user's terminal (never swallow output).
- *   2. Asynchronously trigger `baton compile --fast && baton render
+ *   2. Asynchronously trigger `baton ingest transcript <tmpfile> &&
+ *      baton compile --fast --packet current-task && baton render
  *      --target claude-code --copy`. The trigger is fire-and-forget;
  *      the codex subprocess keeps running.
  *   3. Print a single notification line to stderr so the user knows the
@@ -22,17 +23,21 @@
  */
 
 import { spawn } from 'node:child_process';
+import { createWriteStream, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { detect } from './detect.js';
 import { hasLimitMarker } from './markers.js';
 
 export interface WrapperOptions {
   /**
-   * Called exactly once when the first limit marker is detected. If
-   * omitted, the default trigger spawns `baton compile --fast` followed
-   * by `baton render --target claude-code --copy`.
+   * Called exactly once when the first limit marker is detected. Receives
+   * the path to a tmp file containing the buffered codex stdout so the
+   * trigger can ingest it as a transcript artifact. If omitted, the
+   * default trigger ingests the file then runs compile + render.
    */
-  onLimit?: () => Promise<void> | void;
+  onLimit?: (transcriptPath: string) => Promise<void> | void;
   /**
    * Where to forward codex stdout chunks. Defaults to `process.stdout.write`.
    * Tests inject a buffer collector here.
@@ -48,6 +53,23 @@ export interface WrapperOptions {
    * desktop app) work without further configuration.
    */
   codexBin?: string;
+  /**
+   * Where to write the buffered stdout that gets ingested on a limit
+   * marker. Defaults to `<tmpdir>/baton-codex-<random>.txt`. Tests
+   * inject a deterministic path here.
+   */
+  transcriptPath?: string;
+}
+
+/**
+ * Generate the default transcript buffer path. Random suffix prevents
+ * collisions if multiple wrappers run concurrently.
+ */
+function defaultTranscriptPath(): string {
+  const dir = join(tmpdir(), 'baton-codex');
+  mkdirSync(dir, { recursive: true });
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return join(dir, `session-${suffix}.txt`);
 }
 
 /**
@@ -58,14 +80,22 @@ export interface WrapperOptions {
 export function runWrapperOnStream(
   stream: Readable,
   opts: WrapperOptions = {},
-): Promise<{ triggered: boolean }> {
+): Promise<{ triggered: boolean; transcriptPath: string }> {
   const forward = opts.forward ?? ((c) => process.stdout.write(c));
   const notify =
     opts.notify ??
     ((line) => {
       process.stderr.write(`${line}\n`);
     });
+  const transcriptPath = opts.transcriptPath ?? defaultTranscriptPath();
   const onLimit = opts.onLimit ?? defaultHandoff;
+
+  // Buffer every chunk to a temp file so the limit-marker handler can
+  // hand it to `baton ingest transcript` without re-allocating a giant
+  // in-memory string. Ingest reads from this path; the file persists
+  // after the wrapper exits because ingest hashes + copies it into
+  // `.baton/artifacts/<uuid>/` synchronously, which is what we want.
+  const transcriptStream = createWriteStream(transcriptPath, { flags: 'w' });
 
   let triggered = false;
   // We scan a sliding window so a marker that straddles a chunk boundary
@@ -77,6 +107,7 @@ export function runWrapperOnStream(
   return new Promise((resolve) => {
     stream.on('data', (chunk: Buffer) => {
       forward(chunk);
+      transcriptStream.write(chunk);
       if (triggered) return;
       window = (window + chunk.toString('utf8')).slice(-WINDOW_BYTES);
       if (hasLimitMarker(window)) {
@@ -84,27 +115,31 @@ export function runWrapperOnStream(
         notify('[baton] limit detected — handoff prepared for claude-code (clipboard).');
         // Fire-and-forget. We don't block stdout forwarding on the trigger.
         Promise.resolve()
-          .then(() => onLimit())
+          .then(() => onLimit(transcriptPath))
           .catch((err: unknown) => {
             const msg = err instanceof Error ? err.message : String(err);
             notify(`[baton] handoff trigger failed: ${msg}`);
           });
       }
     });
-    stream.on('end', () => resolve({ triggered }));
-    stream.on('close', () => resolve({ triggered }));
-    stream.on('error', () => resolve({ triggered }));
+    const finish = (): void => {
+      transcriptStream.end(() => resolve({ triggered, transcriptPath }));
+    };
+    stream.on('end', finish);
+    stream.on('close', finish);
+    stream.on('error', finish);
   });
 }
 
 /**
- * Default handoff: spawn `baton compile --fast` then
- * `baton render --target claude-code --copy`. Returns when both
- * subprocesses have exited.
+ * Default handoff: ingest the buffered codex stdout as a transcript
+ * artifact, run a fast compile, then render for claude-code with
+ * clipboard copy. Returns when all subprocesses have exited.
  */
-async function defaultHandoff(): Promise<void> {
-  await runBaton(['compile', '--fast']);
-  await runBaton(['render', '--target', 'claude-code', '--copy']);
+async function defaultHandoff(transcriptPath: string): Promise<void> {
+  await runBaton(['ingest', 'transcript', transcriptPath, '--packet', 'current-task']);
+  await runBaton(['compile', '--fast', '--packet', 'current-task']);
+  await runBaton(['render', '--packet', 'current-task', '--target', 'claude-code', '--copy']);
 }
 
 function runBaton(args: readonly string[]): Promise<void> {

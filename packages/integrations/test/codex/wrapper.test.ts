@@ -1,5 +1,8 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runWrapperOnStream } from '../../src/codex/wrapper.js';
 
 /**
@@ -82,6 +85,63 @@ describe('codex wrapper marker detection', () => {
     });
     expect(result.triggered).toBe(true);
     expect(triggers).toBe(1);
+  });
+
+  describe('transcript buffering', () => {
+    let workDir: string;
+    let transcriptPath: string;
+    beforeEach(() => {
+      workDir = mkdtempSync(join(tmpdir(), 'baton-codex-wrapper-test-'));
+      transcriptPath = join(workDir, 'transcript.txt');
+    });
+    afterEach(() => {
+      // Windows occasionally holds the transcript file handle a tick
+      // longer than the writable stream's `end` callback suggests; the
+      // retry loop absorbs that without a flake.
+      rmSync(workDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    });
+
+    it('buffers every stdout chunk to the transcript file', async () => {
+      const stream = streamFromChunks([
+        'first chunk\n',
+        'second chunk\n',
+        'third chunk with rate limit reached\n',
+      ]);
+      const result = await runWrapperOnStream(stream, {
+        forward: () => {},
+        notify: () => {},
+        onLimit: () => {},
+        transcriptPath,
+      });
+      expect(result.transcriptPath).toBe(transcriptPath);
+      const written = readFileSync(transcriptPath, 'utf8');
+      expect(written).toBe('first chunk\nsecond chunk\nthird chunk with rate limit reached\n');
+    });
+
+    it('passes the transcript path to onLimit', async () => {
+      const stream = streamFromChunks(['some output\n', 'rate limit reached\n']);
+      let receivedPath: string | undefined;
+      await runWrapperOnStream(stream, {
+        forward: () => {},
+        notify: () => {},
+        onLimit: (p) => {
+          receivedPath = p;
+        },
+        transcriptPath,
+      });
+      expect(receivedPath).toBe(transcriptPath);
+    });
+
+    it('writes the transcript even when no marker fires', async () => {
+      const stream = streamFromChunks(['quiet codex output\n']);
+      await runWrapperOnStream(stream, {
+        forward: () => {},
+        notify: () => {},
+        onLimit: () => {},
+        transcriptPath,
+      });
+      expect(readFileSync(transcriptPath, 'utf8')).toBe('quiet codex output\n');
+    });
   });
 
   it('detects markers spanning chunk boundaries', async () => {
