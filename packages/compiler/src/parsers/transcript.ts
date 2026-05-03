@@ -179,6 +179,28 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
   };
 }
 
+/**
+ * Detect whether a transcript file is Claude Code's JSONL session
+ * format (one JSON object per line, with a top-level `type` field) or
+ * the markdown-with-`## role`-header format. We peek at the first
+ * non-blank line and look for a JSON object whose top-level keys
+ * include `type` — that's the JSONL signal.
+ */
+function looksLikeJsonl(content: string): boolean {
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) continue;
+    if (!trimmed.startsWith('{')) return false;
+    try {
+      const obj = JSON.parse(trimmed) as Record<string, unknown>;
+      return typeof obj.type === 'string';
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 export const transcriptParser: Parser<ParsedTranscript> = {
   type: 'transcript',
   async parse(uri: string, opts?: ParserOpts): Promise<ParsedTranscript> {
@@ -186,6 +208,10 @@ export const transcriptParser: Parser<ParsedTranscript> = {
     const content = await readFile(path, 'utf8');
     if (opts?.signal?.aborted) {
       throw new DOMException('Aborted', 'AbortError');
+    }
+    if (path.endsWith('.jsonl') || looksLikeJsonl(content)) {
+      const { parseClaudeJsonlTranscript } = await import('./jsonl-transcript.js');
+      return parseClaudeJsonlTranscript(content);
     }
     return parseClaudeCodeTranscript(content);
   },

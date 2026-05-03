@@ -12,6 +12,7 @@ export const PARSERS: Partial<Record<ArtifactType, Parser<unknown>>> = {
 };
 
 export { transcriptParser, parseClaudeCodeTranscript } from './transcript.js';
+export { parseClaudeJsonlTranscript } from './jsonl-transcript.js';
 export type {
   ParsedTranscript,
   Parser,
