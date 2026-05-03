@@ -95,7 +95,10 @@ describe('codex wrapper marker detection', () => {
       transcriptPath = join(workDir, 'transcript.txt');
     });
     afterEach(() => {
-      rmSync(workDir, { recursive: true, force: true });
+      // Windows occasionally holds the transcript file handle a tick
+      // longer than the writable stream's `end` callback suggests; the
+      // retry loop absorbs that without a flake.
+      rmSync(workDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     });
 
     it('buffers every stdout chunk to the transcript file', async () => {
