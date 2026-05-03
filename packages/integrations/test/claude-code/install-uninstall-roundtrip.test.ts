@@ -71,7 +71,9 @@ describe('claude-code install/uninstall roundtrip (week-4 gate)', () => {
     // Confirm hook scripts exist
     const batonDir = join(pluginDir, 'baton');
     expect(statSync(join(batonDir, 'plugin.json')).isFile()).toBe(true);
-    expect(statSync(join(batonDir, 'hooks', 'pre-compaction.sh')).isFile()).toBe(true);
+    expect(statSync(join(batonDir, 'hooks', 'pre-compact.sh')).isFile()).toBe(true);
+    expect(statSync(join(batonDir, 'hooks', 'stop.sh')).isFile()).toBe(true);
+    expect(statSync(join(batonDir, 'hooks', 'session-end.sh')).isFile()).toBe(true);
 
     await uninstall({ repoRoot });
     const after = dirFingerprint(pluginDir);

@@ -32,7 +32,7 @@ describe('claude-code dryRun', () => {
     expect(plan.mode).toBe('native-hook');
     expect(plan.filesCreated).toHaveLength(4);
     expect(plan.filesCreated.some((p) => p.endsWith('plugin.json'))).toBe(true);
-    expect(plan.hookEvents).toEqual(['pre-compaction', 'session-end', 'limit-warning']);
+    expect(plan.hookEvents).toEqual(['PreCompact', 'Stop', 'SessionEnd']);
     const after = readdirSync(pluginDir);
     expect(after).toEqual(before);
     // Sanity: tmp dir really is unchanged
