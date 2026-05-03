@@ -31,6 +31,11 @@ export interface InstallOpts {
    * Defaults to `process.cwd()`.
    */
   repoRoot?: string;
+  /**
+   * Override for Claude Code's user settings.json path. When omitted,
+   * defaults to `$HOME/.claude/settings.json`. Tests inject a temp path.
+   */
+  settingsPath?: string;
 }
 
 export interface BackupRecord {

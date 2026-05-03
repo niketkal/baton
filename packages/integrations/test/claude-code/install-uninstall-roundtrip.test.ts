@@ -36,10 +36,12 @@ function dirFingerprint(root: string): string {
 describe('claude-code install/uninstall roundtrip (week-4 gate)', () => {
   let pluginDir: string;
   let repoRoot: string;
+  let settingsPath: string;
 
   beforeEach(() => {
     pluginDir = mkdtempSync(join(tmpdir(), 'baton-plugindir-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'baton-repo-'));
+    settingsPath = join(mkdtempSync(join(tmpdir(), 'baton-settings-')), 'settings.json');
     // Stub detect so we don't need a real `claude` binary in CI.
     __setSpawnForTests((() => ({
       pid: 0,
@@ -57,12 +59,13 @@ describe('claude-code install/uninstall roundtrip (week-4 gate)', () => {
     rmSync(repoRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 
-  it('install creates plugin files and uninstall restores the dir byte-for-byte', async () => {
+  it('install creates plugin files + registers hooks in settings.json; uninstall reverses both', async () => {
     const before = dirFingerprint(pluginDir);
 
-    const result = await install({ pluginDir, repoRoot });
+    const result = await install({ pluginDir, repoRoot, settingsPath });
     expect(result.plan.integrationId).toBe('claude-code');
     expect(result.plan.filesCreated.length).toBe(4);
+    expect(result.plan.filesModified).toContain(settingsPath);
     expect(result.plan.fallbackUsed).toBe(false);
 
     const created = dirFingerprint(pluginDir);
@@ -75,8 +78,29 @@ describe('claude-code install/uninstall roundtrip (week-4 gate)', () => {
     expect(statSync(join(batonDir, 'hooks', 'stop.sh')).isFile()).toBe(true);
     expect(statSync(join(batonDir, 'hooks', 'session-end.sh')).isFile()).toBe(true);
 
+    // Confirm settings.json now has the three hook events pointing at
+    // the absolute script paths we just installed. Without these
+    // entries Claude Code never fires the hooks.
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+      hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>>;
+    };
+    expect(Object.keys(settings.hooks ?? {}).sort()).toEqual(['PreCompact', 'SessionEnd', 'Stop']);
+    const preCompactCmd = settings.hooks?.PreCompact?.[0]?.hooks?.[0]?.command ?? '';
+    expect(preCompactCmd).toBe(join(batonDir, 'hooks', 'pre-compact.sh'));
+
     await uninstall({ repoRoot });
     const after = dirFingerprint(pluginDir);
     expect(after).toBe(before);
+
+    // Settings.json should no longer contain baton's hook entries.
+    // The file may or may not exist depending on whether removing our
+    // hooks left it empty; in this test it was created fresh, so the
+    // hooks key should be gone.
+    if (statSync(settingsPath, { throwIfNoEntry: false })) {
+      const afterSettings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+        hooks?: Record<string, unknown>;
+      };
+      expect(afterSettings.hooks).toBeUndefined();
+    }
   });
 });
