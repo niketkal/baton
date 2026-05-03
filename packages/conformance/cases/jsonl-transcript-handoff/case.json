@@ -1,0 +1,16 @@
+{
+  "id": "jsonl-transcript-handoff",
+  "description": "End-to-end: a Claude Code .jsonl session transcript flows through ingest -> compile and produces a packet with non-empty source_artifacts. Regression guard for the v1.0.1 bug where the JSONL parser was missing and hooks produced empty packets.",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/session.jsonl" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1",
+      "source_artifacts": [{ "type": "transcript" }]
+    },
+    "lintResult": {
+      "passed": true
+    }
+  }
+}
