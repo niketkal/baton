@@ -100,6 +100,33 @@ if (cmd === 'compile') {
   const dir = join(repo, '.baton', 'packets', packetId);
   mkdirSync(dir, { recursive: true });
   const packet = packetForId(packetId);
+  // Populate source_artifacts from anything ingest staged under
+  // .baton/artifacts/. A real CLI walks that dir and records each
+  // metadata.json entry on the packet; the mock has to mirror that
+  // so cases asserting non-empty source_artifacts (jsonl-transcript-handoff)
+  // see realistic output.
+  try {
+    const artifactsRoot = join(repo, '.baton', 'artifacts');
+    if (existsSync(artifactsRoot)) {
+      for (const name of readdirSync(artifactsRoot)) {
+        const metaPath = join(artifactsRoot, name, 'metadata.json');
+        if (!existsSync(metaPath)) continue;
+        try {
+          const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+          if (meta.packet === packetId || meta.packet === undefined) {
+            packet.source_artifacts.push({
+              type: meta.kind ?? 'transcript',
+              uri: join(artifactsRoot, name, meta.file ?? ''),
+            });
+          }
+        } catch {
+          // skip malformed metadata
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
   writeFileSync(join(dir, 'packet.json'), JSON.stringify(packet, null, 2));
   if (hasFlag(argv, '--json')) {
     process.stdout.write(`${JSON.stringify({ packet, warnings: [], valid: true })}\n`);
