@@ -1,0 +1,5 @@
+{"type":"permission-mode","permissionMode":"default","sessionId":"abc"}
+{"type":"user","message":{"role":"user","content":"hello there"},"uuid":"u1","timestamp":"2026-05-03T10:00:00Z","sessionId":"abc"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"...internal..."},{"type":"text","text":"hi back"}]},"uuid":"a1","timestamp":"2026-05-03T10:00:01Z","sessionId":"abc"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]},"uuid":"u2","timestamp":"2026-05-03T10:00:02Z","sessionId":"abc"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/x"}}]},"uuid":"a2","timestamp":"2026-05-03T10:00:03Z","sessionId":"abc"}
