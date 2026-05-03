@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import {
   InstallFailedError,
   IntegrationNotAvailableError,
@@ -100,7 +100,11 @@ export async function install(opts: InstallOpts): Promise<InstallResult> {
   // loads hooks listed in settings.hooks. The scriptsDir prefix lets
   // uninstall identify our entries precisely without touching unrelated
   // tools' hooks.
-  const scriptsDir = `${join(baseDir, 'hooks')}/`;
+  // Trailing platform separator so `startsWith(scriptsDir)` matches
+  // exactly the hooks dir without false-positives on a sibling like
+  // `<baseDir>/hooks-archive/` and without missing the real entries on
+  // Windows (where the join'd path uses `\`, not `/`).
+  const scriptsDir = `${join(baseDir, 'hooks')}${sep}`;
   const settingsPath = opts.settingsPath ?? defaultSettingsPath();
   try {
     applyHookRegistrations(settingsPath, scriptsDir, [
