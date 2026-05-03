@@ -21,6 +21,17 @@ export interface InstalledRecord {
   pluginDir: string;
   files: InstalledFile[];
   backupRefs: string[];
+  /**
+   * For integrations that patch an external config (e.g., Claude Code's
+   * user settings.json), the path of that file so uninstall can revert
+   * just our entries without touching unrelated keys.
+   */
+  settingsPath?: string;
+  /**
+   * Absolute prefix that identifies this integration's hook commands
+   * inside `settingsPath`. Used to filter our entries during uninstall.
+   */
+  scriptsDir?: string;
 }
 
 export interface InstalledManifest {

@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync } fr
 import { dirname, join } from 'node:path';
 import { findRecord, removeRecord } from '../state.js';
 import { PLUGIN_NAME } from './plugin/assets.js';
+import { removeHookRegistrations } from './settings.js';
 
 const ID = 'claude-code';
 
@@ -44,6 +45,20 @@ export async function uninstall(opts?: { repoRoot?: string }): Promise<void> {
   if (!record) return; // nothing to do
 
   const baton = join(record.pluginDir, PLUGIN_NAME);
+
+  // De-register baton hooks from Claude Code's settings.json before
+  // removing the script files. Doing it in this order means a partial
+  // failure leaves no orphan settings.json entries pointing at deleted
+  // scripts. Older install records (pre-v1.0.3) didn't track these
+  // fields; in that case we skip silently — the dormant plugin files
+  // were never registered, so there's nothing to remove.
+  if (record.settingsPath !== undefined && record.scriptsDir !== undefined) {
+    try {
+      removeHookRegistrations(record.settingsPath, record.scriptsDir);
+    } catch {
+      // best effort — never block file cleanup on settings.json edits
+    }
+  }
 
   for (const f of record.files) {
     if (!existsSync(f.path)) continue;

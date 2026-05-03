@@ -191,15 +191,33 @@ baton init
 Detects which AI tools are present (Claude Code, Codex, Cursor) and offers
 to install per-tool integrations:
 
-- **Claude Code** — native hooks (pre-compaction, session-end,
-  limit-warning) under `~/.claude/plugins/baton/`
-- **Codex CLI** — wrapper launcher at `~/.local/bin/baton-codex`
-- **Cursor** — paste-only flow (no files installed; you `render --copy`
-  and paste into chat)
+- **Claude Code** — native hooks (`PreCompact`, `Stop`, `SessionEnd`)
+  registered in `~/.claude/settings.json`, with the script bodies under
+  `~/.claude/plugins/baton/hooks/`. **Fires automatically — no extra
+  action needed.**
+- **Codex CLI** — wrapper launcher at `~/.local/bin/baton-codex`. **You
+  must invoke `baton-codex` instead of `codex`** for the hook to fire.
+  Add `alias codex=baton-codex` to your shell profile if you want it
+  transparent.
+- **Cursor** — paste-only flow (no files installed). **Manual:** run
+  `baton failover --to cursor --copy` then paste into Cursor's chat.
 
 Adds `.baton/` to the project (canonical state, redacted logs, SQLite
 cache). Safe to commit `.baton/packets/` if you want shared handoffs;
 gitignore `.baton/state.db` and `.baton/logs/`.
+
+#### How to verify the hooks fired
+
+```bash
+tail -20 ~/.baton-hook.log                   # was the hook invoked?
+ls .baton/artifacts/                         # was a transcript ingested?
+cat .baton/packets/current-task/packet.json | jq '.source_artifacts | length'
+```
+
+If `source_artifacts` is `0` after a Claude Code session ends or
+compacts, the hook either didn't fire (check `~/.claude/settings.json`
+has a `hooks` block referencing baton scripts) or `baton` isn't on PATH
+inside the hook's environment.
 
 ### 2. Hand off to the next tool — `baton failover`
 
