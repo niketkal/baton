@@ -1,30 +1,45 @@
 /**
  * Codex wrapper-launcher runtime.
  *
- * Spawns `codex` as a subprocess with stdin/stderr inherited and stdout
- * piped so we can scan it for limit markers (`./markers.ts`). On a
- * marker hit we:
+ * Two operating modes:
  *
- *   1. Forward the chunk to the user's terminal (never swallow output).
- *   2. Asynchronously trigger `baton ingest transcript <tmpfile> &&
- *      baton compile --fast --packet current-task && baton render
- *      --target claude-code --copy`. The trigger is fire-and-forget;
- *      the codex subprocess keeps running.
- *   3. Print a single notification line to stderr so the user knows the
- *      handoff was prepared.
+ * 1. **TTY pass-through (interactive sessions):** when stdout is a real
+ *    terminal, spawn codex with `stdio: 'inherit'` so it sees a TTY and
+ *    enters interactive mode. We can't scan stdout live in this mode
+ *    (codex owns the terminal), so the limit-marker handoff is
+ *    *post-hoc*: on exit, find the most recently modified rollout under
+ *    `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` that was created
+ *    during this run, scan it for limit markers, and trigger the handoff
+ *    against that file. The rollout has full turn-by-turn fidelity (see
+ *    issue #43 for the parser), so quality matches live capture.
  *
- * Marker detection fires at most once per wrapper session (subsequent
- * matches are suppressed) so we don't spam clipboard writes if the
- * limit message repeats in the transcript.
+ * 2. **Pipe mode (CI / non-interactive):** when stdout is NOT a TTY
+ *    (e.g. piped to a file or running in CI), spawn codex with stdout
+ *    piped so the wrapper can scan output live, forward chunks to the
+ *    parent's stdout, and fire the handoff trigger on the first marker
+ *    hit. Codex tolerates a non-TTY stdout in non-interactive use.
  *
- * Test seam: `runWrapperOnStream(stream, opts)` accepts any Readable
- * (and a `trigger` callback) so tests can pipe a fake stdout without
- * spawning a real codex binary.
+ * Marker detection fires at most once per wrapper session in either
+ * mode (so a marker echoing repeatedly in the rollout doesn't spam the
+ * clipboard).
+ *
+ * Test seams:
+ *   - `runWrapperOnStream(stream, opts)` exercises pipe-mode logic
+ *     against any `Readable` plus a fake `trigger`.
+ *   - `findLatestRolloutSince(sinceMs, sessionsDir)` is exported so the
+ *     post-hoc handoff path can be tested without a live codex spawn.
  */
 
 import { spawn } from 'node:child_process';
-import { createWriteStream, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { detect } from './detect.js';
@@ -59,6 +74,18 @@ export interface WrapperOptions {
    * inject a deterministic path here.
    */
   transcriptPath?: string;
+  /**
+   * Override the codex sessions root for post-hoc rollout discovery.
+   * Defaults to `~/.codex/sessions`. Tests inject a fixture directory
+   * here.
+   */
+  sessionsDir?: string;
+  /**
+   * Override the spawn mode. Default: auto (TTY → 'tty', non-TTY →
+   * 'pipe'). Tests use 'tty' to exercise the post-hoc rollout path
+   * without a real terminal, and 'pipe' to run pipe-mode logic in CI.
+   */
+  mode?: 'tty' | 'pipe';
 }
 
 /**
@@ -158,7 +185,76 @@ function runBaton(args: readonly string[]): Promise<void> {
 }
 
 /**
- * Top-level entry: spawn `codex <args>`, forward stdio, scan stdout.
+ * Walk the codex sessions tree and return the path of the
+ * `rollout-*.jsonl` whose mtime is greatest *and* >= `sinceMs`. Used
+ * by TTY pass-through mode to find the rollout codex wrote during this
+ * wrapper invocation. Returns `null` if no such file exists.
+ *
+ * The sessions tree is `<sessionsDir>/YYYY/MM/DD/rollout-*.jsonl`. We
+ * walk only directories that match `\d+`-shape names so a stray
+ * non-numeric folder doesn't blow up the scan.
+ */
+export function findLatestRolloutSince(
+  sinceMs: number,
+  sessionsDir: string = join(homedir(), '.codex', 'sessions'),
+): string | null {
+  if (!existsSync(sessionsDir)) return null;
+  let best: { path: string; mtime: number } | null = null;
+
+  const isNumericDir = (name: string): boolean => /^\d+$/.test(name);
+
+  const safeReaddir = (dir: string): string[] => {
+    try {
+      return readdirSync(dir);
+    } catch {
+      return [];
+    }
+  };
+
+  for (const year of safeReaddir(sessionsDir)) {
+    if (!isNumericDir(year)) continue;
+    const yDir = join(sessionsDir, year);
+    for (const month of safeReaddir(yDir)) {
+      if (!isNumericDir(month)) continue;
+      const mDir = join(yDir, month);
+      for (const day of safeReaddir(mDir)) {
+        if (!isNumericDir(day)) continue;
+        const dDir = join(mDir, day);
+        for (const file of safeReaddir(dDir)) {
+          if (!file.startsWith('rollout-') || !file.endsWith('.jsonl')) continue;
+          const full = join(dDir, file);
+          let mtime: number;
+          try {
+            mtime = statSync(full).mtimeMs;
+          } catch {
+            continue;
+          }
+          if (mtime < sinceMs) continue;
+          if (best === null || mtime > best.mtime) {
+            best = { path: full, mtime };
+          }
+        }
+      }
+    }
+  }
+  return best?.path ?? null;
+}
+
+/**
+ * Default post-hoc handoff: ingest the rollout as a transcript artifact,
+ * fast-compile, and render for claude-code with clipboard copy. Codex's
+ * rollout JSONL is parsed structurally (see `@batonai/compiler` codex
+ * parser), so the resulting packet has real objective/current_state.
+ */
+async function defaultPostHocHandoff(rolloutPath: string): Promise<void> {
+  await runBaton(['ingest', 'transcript', rolloutPath, '--packet', 'current-task']);
+  await runBaton(['compile', '--mode', 'fast', '--packet', 'current-task']);
+  await runBaton(['render', '--packet', 'current-task', '--target', 'claude-code', '--copy']);
+}
+
+/**
+ * Top-level entry: spawn `codex <args>` and either forward stdio (TTY
+ * mode) or pipe stdout for live marker scanning (non-TTY mode).
  * Resolves with the codex exit code so the wrapper script can exit
  * with the same code (preserving normal codex semantics).
  */
@@ -177,12 +273,67 @@ export async function runWrapper(
       bin = 'codex';
     }
   }
-  // On Windows, codex may be installed as a `.cmd`/`.bat` shim (e.g. npm
-  // install -g). Node refuses to spawn those directly. Going through
-  // cmd.exe (via shell:true) lets the shell resolve the binary using
-  // PATHEXT and execute the resulting batch file. The user-provided argv
-  // is forwarded unchanged; cmd.exe parsing of those args is the same
-  // path codex itself would use if launched from a Windows terminal.
+
+  const resolvedMode: 'tty' | 'pipe' =
+    opts.mode ?? (process.stdout.isTTY === true ? 'tty' : 'pipe');
+  const usePipeMode = resolvedMode === 'pipe';
+  const notify =
+    opts.notify ??
+    ((line) => {
+      process.stderr.write(`${line}\n`);
+    });
+
+  if (!usePipeMode) {
+    // TTY pass-through: codex needs a real terminal for interactive
+    // mode. We give up live stdout scanning and reach for the rollout
+    // file codex wrote during this invocation after it exits.
+    const startedAtMs = Date.now();
+    // On Windows, codex may be installed as a `.cmd`/`.bat` shim; shell
+    // resolution via PATHEXT requires shell:true, same as pipe mode.
+    const child = spawn(bin, [...argv], {
+      stdio: 'inherit',
+      windowsHide: true,
+      shell: process.platform === 'win32',
+    });
+
+    const exitCode: number = await new Promise((resolve) => {
+      child.on('error', () => resolve(127));
+      child.on('exit', (code) => resolve(code ?? 0));
+    });
+
+    // Find the rollout codex wrote during this run, scan it for a
+    // limit marker, and fire the handoff if we hit one. The session
+    // dir on disk is the source of truth — the rollout is appended to
+    // as the session runs and is closed by codex on exit, so the file
+    // is complete by the time we look at it.
+    const rolloutPath = findLatestRolloutSince(startedAtMs, opts.sessionsDir);
+    if (rolloutPath !== null) {
+      let content = '';
+      try {
+        content = readFileSync(rolloutPath, 'utf8');
+      } catch {
+        // unreadable rollout — skip handoff, exit normally
+      }
+      if (content.length > 0 && hasLimitMarker(content)) {
+        notify(
+          '[baton] limit detected in codex session — handoff prepared for claude-code (clipboard).',
+        );
+        const handoff = opts.onLimit ?? defaultPostHocHandoff;
+        try {
+          await handoff(rolloutPath);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          notify(`[baton] handoff trigger failed: ${msg}`);
+        }
+      }
+    }
+
+    return exitCode;
+  }
+
+  // Non-TTY pipe mode (CI etc.) — preserve the original live-scanning
+  // behaviour. Stdin is inherited so a piped CI script can still feed
+  // codex; stdout is piped so we can scan it before forwarding.
   const child = spawn(bin, [...argv], {
     stdio: ['inherit', 'pipe', 'inherit'],
     windowsHide: true,
@@ -196,8 +347,6 @@ export async function runWrapper(
   return new Promise((resolve) => {
     child.on('error', () => resolve(127));
     child.on('exit', (code) => {
-      // Wait for the watcher to drain so we don't return before the last
-      // chunk is forwarded. The watcher always resolves on stream close.
       watcher.then(() => resolve(code ?? 0)).catch(() => resolve(code ?? 0));
     });
   });
