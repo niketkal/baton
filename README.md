@@ -195,11 +195,13 @@ to install per-tool integrations:
   registered in `~/.claude/settings.json`, with the script bodies under
   `~/.claude/plugins/baton/hooks/`. **Fires automatically — no extra
   action needed.**
-- **Codex CLI** — wrapper launcher at `~/.local/bin/baton-codex`. The
-  wrapper is **broken for interactive sessions in v1.0** (issue
-  [#42](https://github.com/niketkal/baton/issues/42) — no PTY, codex
-  refuses to run). Until that's fixed, use the **post-hoc flow** below
-  to capture a finished codex session.
+- **Codex CLI** — wrapper launcher at `~/.local/bin/baton-codex`. Run
+  `baton-codex` instead of `codex` to enable automatic handoff: the
+  wrapper passes through to interactive codex (real terminal, no PTY
+  shenanigans), and on exit scans the codex rollout under
+  `~/.codex/sessions/.../rollout-*.jsonl` for limit markers — if it
+  finds one, it ingests, compiles, and copies a claude-code handoff to
+  the clipboard.
 - **Cursor** — paste-only flow (no files installed). **Manual:** run
   `baton failover --to cursor --copy` then paste into Cursor's chat.
 
@@ -220,11 +222,10 @@ compacts, the hook either didn't fire (check `~/.claude/settings.json`
 has a `hooks` block referencing baton scripts) or `baton` isn't on PATH
 inside the hook's environment.
 
-#### Post-hoc codex handoff (v1.0 workaround for #42)
+#### Manual codex handoff (no wrapper)
 
-Codex writes session rollouts to `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`
-on its own. Until the wrapper is fixed, capture the most recent codex
-session and feed it through baton manually:
+If you ran plain `codex` (not `baton-codex`) and want to hand off after
+the fact, point baton at the rollout codex wrote on its own:
 
 ```bash
 TRANSCRIPT=$(ls -t ~/.codex/sessions/*/*/*/rollout-*.jsonl | head -1)
@@ -366,13 +367,14 @@ plan around them today.
 
 | Issue | Impact | Workaround |
 |---|---|---|
-| [#42](https://github.com/niketkal/baton/issues/42) — Codex wrapper breaks interactive sessions | `baton-codex` errors with `stdout is not a terminal` | Use the post-hoc codex flow: ingest `~/.codex/sessions/*/rollout-*.jsonl` directly (see Quickstart §1) |
-| Codex / Cursor flows are manual | No auto-trigger like Claude Code's settings.json hooks | Run `baton failover` by hand at the moment of handoff (Cursor); use post-hoc flow above (Codex) |
+| Cursor flow is manual | No auto-trigger like Claude Code's settings.json hooks | Run `baton failover --to cursor --copy` by hand at the moment of handoff |
 
 The headline failover flow — Claude Code → any target — works
-end-to-end automatically. The reverse direction (Codex → Claude Code)
-works manually via the post-hoc rollout flow with full turn-by-turn
-fidelity (issue #43 fixed in v1.0.5).
+end-to-end automatically. Codex → Claude Code now also works
+automatically when you run `baton-codex` instead of `codex`: the
+wrapper passes through to interactive codex and triggers the handoff
+post-exit on a limit marker in the rollout (issues #42 and #43 fixed
+in v1.0.5).
 
 ## What ships in v1
 
