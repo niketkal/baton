@@ -1,6 +1,6 @@
 {
   "name": "@batonai/compiler",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "Apache-2.0",
   "description": "Baton artifact ingestion + compile pipeline.",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@batonai/render",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "Apache-2.0",
   "description": "Baton target-specific renderers (claude-code, codex, cursor, generic).",
   "type": "module",
