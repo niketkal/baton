@@ -179,26 +179,41 @@ export function parseClaudeCodeTranscript(content: string): ParsedTranscript {
   };
 }
 
+type JsonlFormat = 'claude' | 'codex' | null;
+
 /**
- * Detect whether a transcript file is Claude Code's JSONL session
- * format (one JSON object per line, with a top-level `type` field) or
- * the markdown-with-`## role`-header format. We peek at the first
- * non-blank line and look for a JSON object whose top-level keys
- * include `type` — that's the JSONL signal.
+ * Detect the JSONL transcript format by peeking at the first non-blank
+ * line. Claude Code sessions have top-level `type: 'user' | 'assistant'`;
+ * codex rollouts have `type: 'session_meta' | 'turn_context' | 'event_msg'
+ * | 'response_item'`. Returns `null` for non-JSONL content (the markdown
+ * `## role` header format) so the caller falls through to the markdown
+ * parser.
  */
-function looksLikeJsonl(content: string): boolean {
+function detectJsonlFormat(content: string): JsonlFormat {
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
-    if (!trimmed.startsWith('{')) return false;
+    if (!trimmed.startsWith('{')) return null;
     try {
       const obj = JSON.parse(trimmed) as Record<string, unknown>;
-      return typeof obj.type === 'string';
+      const t = obj.type;
+      if (typeof t !== 'string') return null;
+      if (t === 'user' || t === 'assistant') return 'claude';
+      if (
+        t === 'session_meta' ||
+        t === 'turn_context' ||
+        t === 'event_msg' ||
+        t === 'response_item'
+      ) {
+        return 'codex';
+      }
+      // Unknown but valid JSONL — default to claude (preserves prior behavior).
+      return 'claude';
     } catch {
-      return false;
+      return null;
     }
   }
-  return false;
+  return null;
 }
 
 export const transcriptParser: Parser<ParsedTranscript> = {
@@ -209,7 +224,12 @@ export const transcriptParser: Parser<ParsedTranscript> = {
     if (opts?.signal?.aborted) {
       throw new DOMException('Aborted', 'AbortError');
     }
-    if (path.endsWith('.jsonl') || looksLikeJsonl(content)) {
+    const fmt = detectJsonlFormat(content);
+    if (fmt === 'codex') {
+      const { parseCodexRolloutTranscript } = await import('./codex-rollout.js');
+      return parseCodexRolloutTranscript(content);
+    }
+    if (fmt === 'claude' || path.endsWith('.jsonl')) {
       const { parseClaudeJsonlTranscript } = await import('./jsonl-transcript.js');
       return parseClaudeJsonlTranscript(content);
     }
