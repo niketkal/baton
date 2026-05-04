@@ -50,6 +50,7 @@ export const CASE_MANIFEST: ReadonlyArray<{ id: string; dir: string }> = [
   { id: 'code-review', dir: 'code-review' },
   { id: 'partial-context', dir: 'partial-context' },
   { id: 'secret-leak', dir: 'secret-leak' },
+  { id: 'codex-rollout-handoff', dir: 'codex-rollout-handoff' },
 ];
 
 export interface LoadCasesOptions {

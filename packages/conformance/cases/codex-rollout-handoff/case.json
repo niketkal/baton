@@ -1,0 +1,16 @@
+{
+  "id": "codex-rollout-handoff",
+  "description": "End-to-end: a codex ~/.codex/sessions rollout-*.jsonl flows through ingest -> compile and produces a packet with non-empty source_artifacts. Regression guard for issue #43 where the JSONL parser only understood Claude Code shape and treated codex rollouts as one giant assistant message.",
+  "input": {
+    "artifacts": [{ "type": "transcript", "uri": "artifacts/rollout.jsonl" }]
+  },
+  "expected": {
+    "packetShape": {
+      "schema_version": "baton.packet/v1",
+      "source_artifacts": [{ "type": "transcript" }]
+    },
+    "lintResult": {
+      "passed": true
+    }
+  }
+}

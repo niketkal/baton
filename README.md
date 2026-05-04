@@ -111,7 +111,7 @@ fresh session.
 
 ```bash
 npm install -g @batonai/cli
-baton --version    # 1.0.1
+baton --version    # 1.0.4
 ```
 
 Requires Node.js 20+.
@@ -233,10 +233,10 @@ baton compile --mode fast --packet current-task
 baton failover --to claude-code --copy
 ```
 
-The compiler currently treats codex's rollout format as plain text
-(issue [#43](https://github.com/niketkal/baton/issues/43)) — the
-handoff works but loses turn-by-turn structure. Tracking a proper
-codex parser for v1.1.
+The compiler ships with a dedicated codex rollout parser that splits
+the file into structured user/assistant turns (with tool-call
+placeholders), so the resulting packet's objective and current_state
+are extracted from real conversation content rather than raw text.
 
 ### 2. Hand off to the next tool — `baton failover`
 
@@ -367,13 +367,13 @@ plan around them today.
 | Issue | Impact | Workaround |
 |---|---|---|
 | [#42](https://github.com/niketkal/baton/issues/42) — Codex wrapper breaks interactive sessions | `baton-codex` errors with `stdout is not a terminal` | Use the post-hoc codex flow: ingest `~/.codex/sessions/*/rollout-*.jsonl` directly (see Quickstart §1) |
-| [#43](https://github.com/niketkal/baton/issues/43) — Codex rollout JSONL parsed as plain text | Codex → X handoffs lose turn-by-turn structure; objective/state weaker | Functional but lossy; v1.1 will add a codex-rollout parser |
 | [#31](https://github.com/niketkal/baton/issues/31) — `outcome ingest` creates orphan packet dirs | Typing a non-existent packet ID silently materializes a dir | Confirm the packet exists first: `baton status` |
 | Codex / Cursor flows are manual | No auto-trigger like Claude Code's settings.json hooks | Run `baton failover` by hand at the moment of handoff (Cursor); use post-hoc flow above (Codex) |
 
 The headline failover flow — Claude Code → any target — works
 end-to-end automatically. The reverse direction (Codex → Claude Code)
-works manually with degraded fidelity.
+works manually via the post-hoc rollout flow with full turn-by-turn
+fidelity (issue #43 fixed in v1.0.5).
 
 ## What ships in v1
 

@@ -1,0 +1,13 @@
+{"timestamp":"2026-04-03T19:18:57.410Z","type":"session_meta","payload":{"id":"019d54c8-74c4-7e03-b248-5bcbcdaf9558","cwd":"/tmp/proj","originator":"codex-tui","cli_version":"0.122.0","model_provider":"openai"}}
+{"timestamp":"2026-04-03T19:18:57.417Z","type":"turn_context","payload":{"turn_id":"t1","cwd":"/tmp/proj","model":"gpt-5.4"}}
+{"timestamp":"2026-04-03T19:18:57.420Z","type":"event_msg","payload":{"type":"task_started"}}
+{"timestamp":"2026-04-03T19:18:57.420Z","type":"event_msg","payload":{"type":"user_message","message":"review android rollout spec"}}
+{"timestamp":"2026-04-03T19:18:59.342Z","type":"response_item","payload":{"type":"reasoning","summary":[],"content":null,"encrypted_content":"SECRET_DO_NOT_LEAK"}}
+{"timestamp":"2026-04-03T19:19:01.776Z","type":"event_msg","payload":{"type":"agent_message","message":"I'll find the spec and review it."}}
+{"timestamp":"2026-04-03T19:19:01.778Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"I'll find the spec and review it."}]}}
+{"timestamp":"2026-04-03T19:19:01.778Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"rg --files\"}","call_id":"c1"}}
+{"timestamp":"2026-04-03T19:19:01.939Z","type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"docs/spec/android-rollout.md\nREADME.md\n"}}
+{"timestamp":"2026-04-03T19:19:02.000Z","type":"response_item","payload":{"type":"web_search_call","status":"completed","action":{"type":"search","query":"android rollout best practices"}}}
+{"timestamp":"2026-04-03T19:19:31.298Z","type":"event_msg","payload":{"type":"token_count","total":1234}}
+{"timestamp":"2026-04-03T19:19:35.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Found docs/spec/android-rollout.md — reviewing now."}}
+{"timestamp":"2026-04-03T19:20:00.000Z","type":"event_msg","payload":{"type":"task_complete"}}
