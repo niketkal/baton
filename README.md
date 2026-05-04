@@ -367,7 +367,6 @@ plan around them today.
 | Issue | Impact | Workaround |
 |---|---|---|
 | [#42](https://github.com/niketkal/baton/issues/42) — Codex wrapper breaks interactive sessions | `baton-codex` errors with `stdout is not a terminal` | Use the post-hoc codex flow: ingest `~/.codex/sessions/*/rollout-*.jsonl` directly (see Quickstart §1) |
-| [#31](https://github.com/niketkal/baton/issues/31) — `outcome ingest` creates orphan packet dirs | Typing a non-existent packet ID silently materializes a dir | Confirm the packet exists first: `baton status` |
 | Codex / Cursor flows are manual | No auto-trigger like Claude Code's settings.json hooks | Run `baton failover` by hand at the moment of handoff (Cursor); use post-hoc flow above (Codex) |
 
 The headline failover flow — Claude Code → any target — works

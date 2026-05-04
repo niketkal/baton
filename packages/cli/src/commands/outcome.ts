@@ -107,7 +107,7 @@ export async function runOutcomeIngest(
   source: string,
   opts: OutcomeIngestOptions,
 ): Promise<number> {
-  const { mkdirSync, writeFileSync, appendFileSync } = await import('node:fs');
+  const { existsSync, mkdirSync, writeFileSync, appendFileSync } = await import('node:fs');
   const { join } = await import('node:path');
   const { randomUUID } = await import('node:crypto');
   const start = Date.now();
@@ -147,6 +147,16 @@ export async function runOutcomeIngest(
     }
   } else {
     payload = { format: 'markdown', body: raw };
+  }
+
+  // Reject ingest against a packet that doesn't exist on disk. Without
+  // this guard, mkdirSync below silently materializes an orphan
+  // `.baton/packets/<id>/outcomes/` skeleton with no packet.json,
+  // breaking the "files canonical" invariant (see issue #31).
+  const packetJson = join(repoRoot, '.baton', 'packets', opts.packet, 'packet.json');
+  if (!existsSync(packetJson)) {
+    process.stderr.write(`baton: no such packet: ${opts.packet}\n`);
+    return 1;
   }
 
   const outcomeId = randomUUID();
