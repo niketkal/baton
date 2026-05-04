@@ -15,11 +15,7 @@
       "import": "./dist/index.js"
     }
   },
-  "files": [
-    "dist",
-    "scripts",
-    "README.md"
-  ],
+  "files": ["dist", "scripts", "README.md"],
   "scripts": {
     "build": "tsup src/index.ts src/bin.ts --format esm --dts --clean --target node20",
     "test": "vitest run",
