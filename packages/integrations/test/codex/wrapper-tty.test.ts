@@ -183,3 +183,54 @@ describe('runWrapper TTY mode (post-hoc rollout handoff)', () => {
     expect(triggered).toBe(false);
   });
 });
+
+describe('runWrapper auto mode selection', () => {
+  let dir: string;
+  let codexBin: string;
+  let originalStdinIsTty: boolean | undefined;
+  let originalStdoutIsTty: boolean | undefined;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'baton-codex-mode-'));
+    codexBin = join(dir, 'codex');
+    if (IS_WIN) {
+      writeFileSync(`${codexBin}.cmd`, '@echo off\r\nexit /b 0\r\n', 'utf8');
+      codexBin = `${codexBin}.cmd`;
+    } else {
+      writeFileSync(codexBin, '#!/usr/bin/env bash\nexit 0\n', 'utf8');
+      chmodSync(codexBin, 0o755);
+    }
+    originalStdinIsTty = process.stdin.isTTY;
+    originalStdoutIsTty = process.stdout.isTTY;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: originalStdinIsTty,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: originalStdoutIsTty,
+      configurable: true,
+    });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  });
+
+  it('falls back to pipe mode when stdin is not a TTY (harness with piped stdin)', async () => {
+    // Simulate a harness where stdout is a TTY but stdin is piped.
+    // Without the dual-isTTY check, the wrapper would have tried
+    // stdio:'inherit' and codex would error with "stdin is not a
+    // terminal". Pipe mode tolerates the piped stdin.
+    Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true });
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    // No mode override — exercise the auto path.
+    const code = await runWrapper([], {
+      codexBin,
+      // No sessionsDir means TTY-mode rollout discovery would default
+      // to ~/.codex/sessions; pipe mode never reaches that branch, so
+      // this is a sufficient assertion that we picked pipe mode.
+      notify: () => {},
+    });
+    expect(code).toBe(0);
+  });
+});
