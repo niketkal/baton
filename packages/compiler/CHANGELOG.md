@@ -1,5 +1,18 @@
 # @batonai/compiler
 
+## 1.0.5
+
+### Patch Changes
+
+- - **compiler**: add a dedicated codex rollout JSONL parser. Codex sessions written to `~/.codex/sessions/.../rollout-*.jsonl` are now parsed into structured user/assistant turns (with tool-call placeholders); previously the whole file fell through as a single assistant blob with `COMPILE_TRANSCRIPT_UNRECOGNIZED`. Closes #43.
+  - **integrations/codex**: TTY pass-through with post-hoc rollout handoff. `baton-codex` now spawns codex with `stdio: 'inherit'` for interactive sessions (real terminal — no more `stdout is not a terminal`), and after codex exits scans the rollout for limit markers to fire the handoff. Pipe mode preserved for non-TTY / CI use. Closes #42.
+  - **cli**: `outcome ingest` now rejects non-existent packets instead of silently materializing an orphan `.baton/packets/<id>/outcomes/` skeleton. Closes #31.
+- Updated dependencies
+  - @batonai/lint@1.0.5
+  - @batonai/llm@1.0.5
+  - @batonai/schema@1.0.5
+  - @batonai/store@1.0.5
+
 ## 1.0.1
 
 ### Patch Changes
