@@ -1,9 +1,23 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { classifyOutcome, runOutcomeIngest } from '../../src/commands/outcome.js';
 import { closeLogger, resetLoggerCacheForTests } from '../../src/output/logger.js';
+
+function seedPacket(repoRoot: string, id: string): void {
+  const dir = join(repoRoot, '.baton', 'packets', id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'packet.json'), JSON.stringify({ id }), 'utf8');
+}
 
 describe('outcome classifyOutcome heuristics', () => {
   it('buckets clear successes', () => {
@@ -45,6 +59,7 @@ describe('outcome ingest', () => {
   });
 
   it('persists a JSON outcome and writes the events row', async () => {
+    seedPacket(dir, 'flaky-test-fix');
     const src = join(dir, 'result.json');
     writeFileSync(src, JSON.stringify({ status: 'PR merged', tests: 'pass' }, null, 2), 'utf8');
     const code = await runOutcomeIngest(src, {
@@ -83,6 +98,7 @@ describe('outcome ingest', () => {
   });
 
   it('classifies a failure markdown payload', async () => {
+    seedPacket(dir, 'flaky-test-fix');
     const src = join(dir, 'fail.md');
     writeFileSync(src, '# Result\n\nThe build failed with 3 errors.\n', 'utf8');
     const code = await runOutcomeIngest(src, {
@@ -100,6 +116,7 @@ describe('outcome ingest', () => {
   });
 
   it('sanitizes the source tool name', async () => {
+    seedPacket(dir, 'pkt');
     const src = join(dir, 'r.md');
     writeFileSync(src, 'looks neutral', 'utf8');
     await runOutcomeIngest(src, {
@@ -111,5 +128,23 @@ describe('outcome ingest', () => {
     const file = readdirSync(outcomesDir)[0] as string;
     expect(file).not.toContain('/');
     expect(file).not.toContain('..');
+  });
+
+  it('rejects a non-existent packet without creating an orphan directory', async () => {
+    let stderrOutput = '';
+    stderr.mockImplementation((s: unknown) => {
+      stderrOutput += typeof s === 'string' ? s : (s as Buffer).toString('utf8');
+      return true;
+    });
+    const src = join(dir, 'note.md');
+    writeFileSync(src, 'tests pass', 'utf8');
+    const code = await runOutcomeIngest(src, {
+      packet: 'does-not-exist',
+      source: 'claude-code',
+      repo: dir,
+    });
+    expect(code).not.toBe(0);
+    expect(stderrOutput).toMatch(/no such packet: does-not-exist/);
+    expect(existsSync(join(dir, '.baton', 'packets', 'does-not-exist'))).toBe(false);
   });
 });
