@@ -1,6 +1,6 @@
 {
   "name": "@batonai/integrations",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "Apache-2.0",
   "description": "Baton per-tool hook installers (Claude Code, Codex CLI, Cursor).",
   "type": "module",

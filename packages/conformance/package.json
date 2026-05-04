@@ -1,6 +1,6 @@
 {
   "name": "@batonai/conformance",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "Apache-2.0",
   "description": "Baton public conformance suite (synthetic fixtures only).",
   "type": "module",

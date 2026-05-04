@@ -1,6 +1,6 @@
 {
   "name": "@batonai/lint",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "Apache-2.0",
   "description": "Baton BTN lint rule engine.",
   "type": "module",
