@@ -3,9 +3,12 @@
  *
  * Two operating modes:
  *
- * 1. **TTY pass-through (interactive sessions):** when stdout is a real
- *    terminal, spawn codex with `stdio: 'inherit'` so it sees a TTY and
- *    enters interactive mode. We can't scan stdout live in this mode
+ * 1. **TTY pass-through (interactive sessions):** when *both* stdin
+ *    and stdout are real terminals, spawn codex with
+ *    `stdio: 'inherit'` so it sees a TTY and enters interactive mode.
+ *    Codex hard-fails with "stdin is not a terminal" or "stdout is not
+ *    a terminal" if either side is piped, so we don't enter this mode
+ *    unless both are TTYs. We can't scan stdout live in this mode
  *    (codex owns the terminal), so the limit-marker handoff is
  *    *post-hoc*: on exit, find the most recently modified rollout under
  *    `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` that was created
@@ -274,8 +277,13 @@ export async function runWrapper(
     }
   }
 
-  const resolvedMode: 'tty' | 'pipe' =
-    opts.mode ?? (process.stdout.isTTY === true ? 'tty' : 'pipe');
+  // Codex requires both stdin AND stdout to be TTYs to enter
+  // interactive mode. If either is non-TTY (e.g. running under a
+  // harness that pipes stdin), fall back to pipe mode so the user
+  // sees the existing live-scanning behaviour rather than codex's
+  // bare "stdin/stdout is not a terminal" error.
+  const inheritsRealTty = process.stdin.isTTY === true && process.stdout.isTTY === true;
+  const resolvedMode: 'tty' | 'pipe' = opts.mode ?? (inheritsRealTty ? 'tty' : 'pipe');
   const usePipeMode = resolvedMode === 'pipe';
   const notify =
     opts.notify ??

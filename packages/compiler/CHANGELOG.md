@@ -1,5 +1,16 @@
 # @batonai/compiler
 
+## 1.0.6
+
+### Patch Changes
+
+- - **integrations/codex**: TTY mode auto-detection now requires _both_ `stdin.isTTY` and `stdout.isTTY`. Codex rejects an interactive session with "stdin is not a terminal" if either is piped, so the previous stdout-only check still hit that error in harnesses where stdout is a TTY but stdin is piped. When either side is non-TTY the wrapper now falls back to pipe mode instead.
+- Updated dependencies
+  - @batonai/lint@1.0.6
+  - @batonai/llm@1.0.6
+  - @batonai/schema@1.0.6
+  - @batonai/store@1.0.6
+
 ## 1.0.5
 
 ### Patch Changes
