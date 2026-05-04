@@ -99,7 +99,7 @@ else
   echo "[baton-hook] no transcript_path in payload; skipping ingest" >> "\$LOG"
 fi
 
-baton compile --fast --packet current-task --json >> "\$LOG" 2>&1
+baton compile --mode fast --packet current-task --json >> "\$LOG" 2>&1
 exit 0
 `;
 }

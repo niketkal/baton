@@ -90,7 +90,7 @@ exit 0
         }
       })();
       expect(argv).toContain(`ingest transcript ${transcriptPath} --packet current-task`);
-      expect(argv).toContain('compile --fast --packet current-task');
+      expect(argv).toContain('compile --mode fast --packet current-task');
     });
 
     it(`${script}: skips ingest gracefully when transcript_path is missing`, () => {
@@ -104,7 +104,7 @@ exit 0
         }
       })();
       expect(argv).not.toContain('ingest');
-      expect(argv).toContain('compile --fast --packet current-task');
+      expect(argv).toContain('compile --mode fast --packet current-task');
     });
   }
 });
