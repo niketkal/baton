@@ -138,7 +138,7 @@ export function runWrapperOnStream(
  */
 async function defaultHandoff(transcriptPath: string): Promise<void> {
   await runBaton(['ingest', 'transcript', transcriptPath, '--packet', 'current-task']);
-  await runBaton(['compile', '--fast', '--packet', 'current-task']);
+  await runBaton(['compile', '--mode', 'fast', '--packet', 'current-task']);
   await runBaton(['render', '--packet', 'current-task', '--target', 'claude-code', '--copy']);
 }
 
