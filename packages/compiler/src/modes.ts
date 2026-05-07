@@ -1,6 +1,6 @@
 import type { LLMCache, LLMProvider } from '@batonai/llm';
 import { SCHEMA_VERSION } from '@batonai/schema';
-import type { ParsedTranscript } from './parsers/types.js';
+import type { ParsedTranscript, TranscriptMessage } from './parsers/types.js';
 import type { RepoContext } from './repo.js';
 import type { CompileWarning, Packet } from './types.js';
 
@@ -63,11 +63,20 @@ export function runFastMode(
     prior = null;
   }
   const transcript = input.transcript;
+  // Tool-placeholder messages emitted by the parsers — `[tool: name]`
+  // for tool calls, `[tool_result] ...` for tool outputs. They're useful
+  // to know about (proves a tool ran) but make terrible "current state"
+  // text. Skip them when picking the most recent prose assistant turn.
+  const isToolPlaceholder = (text: string): boolean => {
+    const t = text.trim();
+    return /^\[tool:[^\]]+\]\s*$/.test(t) || t.startsWith('[tool_result]');
+  };
+  const isProseAssistant = (m: TranscriptMessage): boolean =>
+    m.role === 'assistant' && !isToolPlaceholder(m.text);
+
   const firstUser = transcript?.messages.find((m) => m.role === 'user');
-  const firstAssistant = transcript?.messages.find((m) => m.role === 'assistant');
-  const lastAssistant = [...(transcript?.messages ?? [])]
-    .reverse()
-    .find((m) => m.role === 'assistant');
+  const firstAssistant = transcript?.messages.find(isProseAssistant);
+  const lastAssistant = [...(transcript?.messages ?? [])].reverse().find(isProseAssistant);
 
   const objective =
     prior?.objective?.trim() ||

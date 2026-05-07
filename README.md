@@ -111,7 +111,7 @@ fresh session.
 
 ```bash
 npm install -g @batonai/cli
-baton --version    # 1.0.6
+baton --version    # 1.0.7
 ```
 
 Requires Node.js 20+.
