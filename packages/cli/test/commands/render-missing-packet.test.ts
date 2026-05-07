@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,5 +37,22 @@ describe('render — missing packet handling', () => {
     });
     expect(code).toBe(1);
     expect(stderrText.toLowerCase()).toMatch(/packet|not found|enoent/);
+  });
+
+  it('does NOT downgrade malformed packet.json to exit 1 — corruption should escape', async () => {
+    // Seed a packet directory with a packet.json that exists but is
+    // not parseable JSON. PacketStore.read() throws SyntaxError;
+    // that's data-corruption, not operator typo, so the render
+    // command must let the exception escape so main.ts can map it
+    // to exit-3. Otherwise broken canonical state silently looks
+    // like a typo and the user never knows their on-disk packet
+    // has decayed.
+    mkdirSync(join(dir, '.baton', 'packets', 'corrupt'), { recursive: true });
+    writeFileSync(
+      join(dir, '.baton', 'packets', 'corrupt', 'packet.json'),
+      'this is not json{{{',
+      'utf8',
+    );
+    await expect(runRender({ packet: 'corrupt', target: 'generic', repo: dir })).rejects.toThrow();
   });
 });

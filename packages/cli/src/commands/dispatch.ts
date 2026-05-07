@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import { isOperatorPacketError } from '../output/packet-errors.js';
 
 /**
  * `baton dispatch <packet> --target <tool> --adapter <name>` — render
@@ -136,11 +137,16 @@ export async function runDispatch(opts: DispatchOptions): Promise<number> {
     try {
       packet = store.read(opts.packet);
     } catch (err) {
-      // Missing/invalid packet is operator error — surface a clean
-      // exit-1 message instead of letting the throw escape and get
-      // mapped to exit-3 (internal failure) by main.ts.
-      process.stderr.write(`baton: ${(err as Error).message}\n`);
-      return 1;
+      // Surface only operator-error shapes (missing packet / invalid
+      // id) as exit-1. Schema-assert failures and malformed JSON are
+      // canonical-state corruption — let them escape to main.ts so
+      // the user gets exit-3 (internal failure) rather than thinking
+      // they typed the id wrong.
+      if (isOperatorPacketError(err)) {
+        process.stderr.write(`baton: ${(err as Error).message}\n`);
+        return 1;
+      }
+      throw err;
     }
     const r = render(packet, target);
     markdown = r.markdown;

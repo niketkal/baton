@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { RenderTarget } from '@batonai/render';
 import type { Command } from 'commander';
+import { isOperatorPacketError } from '../output/packet-errors.js';
 
 const SUPPORTED_TARGETS: RenderTarget[] = ['generic', 'claude-code', 'codex', 'cursor'];
 
@@ -37,11 +38,17 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
     try {
       packet = store.read(opts.packet);
     } catch (err) {
-      // Missing/invalid packet is operator error, not an internal
-      // failure. Surface a clean exit-1 message rather than letting
-      // the throw bubble up to main.ts which maps it to exit-3.
-      process.stderr.write(`baton: ${(err as Error).message}\n`);
-      return 1;
+      // Surface only operator-error shapes (missing packet / invalid
+      // id) as exit-1 with a clean message. Real data corruption —
+      // malformed JSON, schema-assert failures — should still escape
+      // to main.ts and map to exit-3 (internal failure) so the user
+      // knows something is wrong with their on-disk state, not their
+      // command.
+      if (isOperatorPacketError(err)) {
+        process.stderr.write(`baton: ${(err as Error).message}\n`);
+        return 1;
+      }
+      throw err;
     }
     result = render(packet, target);
   } finally {
