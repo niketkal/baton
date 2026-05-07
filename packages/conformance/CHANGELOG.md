@@ -1,29 +1,10 @@
 # @batonai/conformance
 
-## 1.0.8
-
-### Patch Changes
-
-- Fixes 4 bugs surfaced by code review:
-  - **cli/failover**: passes the same repo-aware lint context (`fs`, `gitRefs`, `freshness`) to `lint()` that `baton lint` uses. Previously `failover` called `lint()` with only `{ repoRoot }`, so BTN012 (referenced files exist), BTN013 (git refs resolve), and BTN014 (packet freshness) silently returned `[]` and a packet with broken references could pass the failover gate.
-  - **cli/ingest, cli/outcome ingest**: relative source paths now resolve against `--repo` (the targeted repo root) instead of `process.cwd()`. Multi-repo automation that runs `baton ingest ... --repo /other/repo transcript.md` from a different working directory was silently reading from the wrong tree.
-  - **cli/dispatch**: `--adapter stdout --json` now emits a single JSON receipt on stdout (with the rendered markdown embedded as `result.markdown`) instead of writing markdown to stdout and shoving the JSON receipt onto stderr. Restores the documented JSON-mode contract.
-  - **cli/render, cli/dispatch**: missing or invalid packet ids now exit with code 1 and a clean stderr message, matching `baton status`. Previously the underlying `PacketStore.read()` throw escaped to `main()` and got mapped to exit code 3 (internal failure), so operator typos were misclassified.
-
-- Updated dependencies
-  - @batonai/lint@1.0.8
-  - @batonai/render@1.0.8
-  - @batonai/schema@1.0.8
-
 ## 1.0.7
 
 ### Patch Changes
 
-- - **compiler**: fast-mode `current_state` extraction now skips tool-placeholder messages (`[tool: name]`, `[tool_result] …`) when picking the most recent assistant turn. Sessions ending in a tool call (common for codex rollouts) were producing `current_state: "[tool: exec_command]"` instead of the substantive prose just above it. The filter only treats messages whose _entire_ body is a placeholder as non-prose, so inline mentions like "I ran [tool: rg]" still count.
-- Updated dependencies
-  - @batonai/lint@1.0.7
-  - @batonai/render@1.0.7
-  - @batonai/schema@1.0.7
+- Patch release bundling fixes from PRs #50, #51, #52. See `@batonai/cli`'s changelog for the full list.
 
 ## 1.0.6
 
