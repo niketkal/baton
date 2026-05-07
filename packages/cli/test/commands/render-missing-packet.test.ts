@@ -46,20 +46,25 @@ describe('render — missing packet handling', () => {
   // assertion on Windows beats wiring a platform-specific delay.
   const skipOnWindows = process.platform === 'win32' ? it.skip : it;
 
-  skipOnWindows('does NOT downgrade malformed packet.json to exit 1 — corruption should escape', async () => {
-    // Seed a packet directory with a packet.json that exists but is
-    // not parseable JSON. PacketStore.read() throws SyntaxError;
-    // that's data-corruption, not operator typo, so the render
-    // command must let the exception escape so main.ts can map it
-    // to exit-3. Otherwise broken canonical state silently looks
-    // like a typo and the user never knows their on-disk packet
-    // has decayed.
-    mkdirSync(join(dir, '.baton', 'packets', 'corrupt'), { recursive: true });
-    writeFileSync(
-      join(dir, '.baton', 'packets', 'corrupt', 'packet.json'),
-      'this is not json{{{',
-      'utf8',
-    );
-    await expect(runRender({ packet: 'corrupt', target: 'generic', repo: dir })).rejects.toThrow();
-  });
+  skipOnWindows(
+    'does NOT downgrade malformed packet.json to exit 1 — corruption should escape',
+    async () => {
+      // Seed a packet directory with a packet.json that exists but is
+      // not parseable JSON. PacketStore.read() throws SyntaxError;
+      // that's data-corruption, not operator typo, so the render
+      // command must let the exception escape so main.ts can map it
+      // to exit-3. Otherwise broken canonical state silently looks
+      // like a typo and the user never knows their on-disk packet
+      // has decayed.
+      mkdirSync(join(dir, '.baton', 'packets', 'corrupt'), { recursive: true });
+      writeFileSync(
+        join(dir, '.baton', 'packets', 'corrupt', 'packet.json'),
+        'this is not json{{{',
+        'utf8',
+      );
+      await expect(
+        runRender({ packet: 'corrupt', target: 'generic', repo: dir }),
+      ).rejects.toThrow();
+    },
+  );
 });
