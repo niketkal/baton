@@ -33,7 +33,16 @@ export async function runRender(opts: RenderCommandOptions): Promise<number> {
   const store = PacketStore.open(repoRoot);
   let result: ReturnType<typeof render>;
   try {
-    const packet = store.read(opts.packet);
+    let packet: ReturnType<typeof store.read>;
+    try {
+      packet = store.read(opts.packet);
+    } catch (err) {
+      // Missing/invalid packet is operator error, not an internal
+      // failure. Surface a clean exit-1 message rather than letting
+      // the throw bubble up to main.ts which maps it to exit-3.
+      process.stderr.write(`baton: ${(err as Error).message}\n`);
+      return 1;
+    }
     result = render(packet, target);
   } finally {
     store.close();

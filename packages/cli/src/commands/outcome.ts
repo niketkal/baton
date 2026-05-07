@@ -76,7 +76,7 @@ export function classifyOutcome(text: string): OutcomeClass {
   return 'unknown';
 }
 
-async function readPathOrStdin(source: string): Promise<string> {
+async function readPathOrStdin(source: string, repoRoot: string): Promise<string> {
   const { readFileSync } = await import('node:fs');
   const { isAbsolute, resolve } = await import('node:path');
   if (source === '-') {
@@ -87,7 +87,11 @@ async function readPathOrStdin(source: string): Promise<string> {
       process.stdin.on('error', (e) => rejectP(e));
     });
   }
-  const p = isAbsolute(source) ? source : resolve(source);
+  // Resolve relative paths against `--repo` (the repoRoot the user
+  // explicitly targeted) rather than process.cwd(). In multi-repo
+  // automation those can disagree, and silently ingesting from the
+  // wrong directory attaches the wrong artifact to the packet.
+  const p = isAbsolute(source) ? source : resolve(repoRoot, source);
   return readFileSync(p, 'utf8');
 }
 
@@ -127,7 +131,7 @@ export async function runOutcomeIngest(
 
   let raw: string;
   try {
-    raw = await readPathOrStdin(source);
+    raw = await readPathOrStdin(source, repoRoot);
   } catch (err) {
     process.stderr.write(`failed to read outcome source: ${(err as Error).message}\n`);
     return 1;

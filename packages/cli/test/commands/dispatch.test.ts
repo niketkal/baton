@@ -130,4 +130,49 @@ describe('dispatch', () => {
     });
     expect(code).toBe(1);
   });
+
+  it('--adapter stdout --json emits a JSON receipt (with markdown) on stdout, not markdown', async () => {
+    const code = await runDispatch({
+      packet: 'flaky-test-fix',
+      target: 'codex',
+      adapter: 'stdout',
+      json: true,
+      repo: dir,
+    });
+    expect(code).toBe(0);
+    const written = stdout.mock.calls.map((c) => c[0] as string).join('');
+    // Stdout must be a single parseable JSON document — not markdown
+    // followed by a stray JSON line.
+    const trimmed = written.trim();
+    expect(trimmed.startsWith('{')).toBe(true);
+    const parsed = JSON.parse(trimmed) as {
+      receiptId: string;
+      packetId: string;
+      adapter: string;
+      status: string;
+      markdown: string;
+    };
+    expect(parsed.packetId).toBe('flaky-test-fix');
+    expect(parsed.adapter).toBe('stdout');
+    expect(parsed.status).toBe('ok');
+    // The rendered markdown is now embedded in the receipt so callers
+    // can recover it without scraping stderr.
+    expect(parsed.markdown).toContain('Flaky test fix');
+  });
+
+  it('reports a missing packet as a user error (exit 1), not an internal failure (exit 3)', async () => {
+    let stderrText = '';
+    stderr.mockImplementation((s: unknown) => {
+      stderrText += typeof s === 'string' ? s : (s as Buffer).toString('utf8');
+      return true;
+    });
+    const code = await runDispatch({
+      packet: 'does-not-exist',
+      target: 'generic',
+      adapter: 'file',
+      repo: dir,
+    });
+    expect(code).toBe(1);
+    expect(stderrText.toLowerCase()).toMatch(/packet|not found|enoent/);
+  });
 });

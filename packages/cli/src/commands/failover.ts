@@ -62,7 +62,9 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
 
   const mode = opts.full === true ? 'full' : 'fast';
 
-  const { compile, estimateCostUsd } = await import('@batonai/compiler');
+  const { compile, estimateCostUsd, attachRepo, assessFreshness } = await import(
+    '@batonai/compiler'
+  );
   const { lint } = await import('@batonai/lint');
   const { render } = await import('@batonai/render');
   const { collectArtifacts } = await import('./compile.js');
@@ -79,7 +81,23 @@ export async function runFailover(opts: FailoverOptions): Promise<number> {
   });
 
   // Non-strict lint: only block on real errors, not warnings.
-  const lintReport = lint(compileResult.packet, { repoRoot }, { strict: false });
+  // Build the same repo-aware context that `baton lint` constructs so
+  // BTN012 (referenced files exist), BTN013 (git refs resolve), and
+  // BTN014 (packet freshness vs HEAD) actually run. Without these the
+  // failover gate could green-light a packet that points at deleted
+  // files, unresolved commits, or a moved HEAD.
+  const repo = await attachRepo({ root: repoRoot });
+  const freshness = await assessFreshness(compileResult.packet, repo);
+  const lintCtx: Parameters<typeof lint>[1] = {
+    repoRoot,
+    ...(repo.fs !== undefined ? { fs: repo.fs } : {}),
+    ...(repo.gitRefs !== undefined ? { gitRefs: repo.gitRefs } : {}),
+    freshness: {
+      stale: freshness.stale,
+      ...(freshness.reason !== undefined ? { reason: freshness.reason } : {}),
+    },
+  };
+  const lintReport = lint(compileResult.packet, lintCtx, { strict: false });
   const blockingLint = lintReport.errors.length > 0;
 
   // Fix 1 (BLOCKER): block on EITHER lint errors OR schema invalid.
