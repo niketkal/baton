@@ -105,7 +105,12 @@ export async function runIngest(
     digest = out.digest;
     bytes = out.bytes;
   } else {
-    const path = isAbsolute(source) ? source : resolve(source);
+    // Resolve a relative `source` against `--repo` (`repoRoot`) rather
+    // than `process.cwd()`. Multi-repo automation that calls
+    // `baton ingest ... --repo /other/repo transcript.md` from a
+    // different working directory expects the file to be read from
+    // `/other/repo/transcript.md`, not from wherever the CLI was launched.
+    const path = isAbsolute(source) ? source : resolve(repoRoot, source);
     storedName = basename(path);
     const out = await streamFileTo(path, join(artifactsDir, storedName));
     digest = out.digest;

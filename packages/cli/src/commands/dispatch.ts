@@ -42,6 +42,13 @@ export interface DispatchResult {
   status: 'ok' | 'error';
   destination?: string;
   bytes: number;
+  /**
+   * Rendered markdown body. Only populated for `--adapter stdout --json`
+   * where stdout is reserved for the JSON receipt — the rendered packet
+   * has nowhere else to go. Other adapters know where the markdown
+   * landed (file path, clipboard, etc.) so this stays undefined.
+   */
+  markdown?: string;
 }
 
 async function runAdapter(
@@ -51,8 +58,13 @@ async function runAdapter(
   repoRoot: string,
 ): Promise<{ destination: string }> {
   if (adapter === 'stdout') {
-    process.stdout.write(markdown);
-    if (!markdown.endsWith('\n')) process.stdout.write('\n');
+    // In --json mode the stdout slot is reserved for the JSON receipt
+    // (the CLI's machine-readable contract). Don't write markdown to
+    // stdout here; runDispatch() embeds it in the receipt instead.
+    if (opts.json !== true) {
+      process.stdout.write(markdown);
+      if (!markdown.endsWith('\n')) process.stdout.write('\n');
+    }
     return { destination: 'stdout' };
   }
   if (adapter === 'clipboard') {
@@ -120,7 +132,16 @@ export async function runDispatch(opts: DispatchOptions): Promise<number> {
   const store = PacketStore.open(repoRoot);
   let markdown: string;
   try {
-    const packet = store.read(opts.packet);
+    let packet: ReturnType<typeof store.read>;
+    try {
+      packet = store.read(opts.packet);
+    } catch (err) {
+      // Missing/invalid packet is operator error — surface a clean
+      // exit-1 message instead of letting the throw escape and get
+      // mapped to exit-3 (internal failure) by main.ts.
+      process.stderr.write(`baton: ${(err as Error).message}\n`);
+      return 1;
+    }
     const r = render(packet, target);
     markdown = r.markdown;
   } finally {
@@ -162,14 +183,24 @@ export async function runDispatch(opts: DispatchOptions): Promise<number> {
     status,
     bytes: Buffer.byteLength(markdown, 'utf8'),
     ...(destination !== '' ? { destination } : {}),
+    // For --adapter stdout --json the runAdapter step suppressed the
+    // markdown print so stdout is free for the JSON receipt. Embed the
+    // rendered markdown in the receipt so callers can still recover it
+    // from a single stdout payload.
+    ...(adapter === 'stdout' && opts.json === true && status === 'ok' ? { markdown } : {}),
   };
 
-  if (status === 'ok' && adapter !== 'stdout') {
-    const { renderHumanResult } = await import('../output/human.js');
-    const { renderJsonResult } = await import('../output/json.js');
+  if (status === 'ok') {
     if (opts.json === true) {
+      // JSON-mode contract: structured receipt always lands on stdout,
+      // regardless of adapter. For the stdout adapter the receipt
+      // contains the markdown body too (see DispatchResult.markdown).
+      const { renderJsonResult } = await import('../output/json.js');
       process.stdout.write(renderJsonResult(result));
-    } else {
+    } else if (adapter !== 'stdout') {
+      // Human-mode summary; the stdout adapter already wrote markdown
+      // to stdout in runAdapter, no extra summary line.
+      const { renderHumanResult } = await import('../output/human.js');
       process.stdout.write(
         renderHumanResult({
           ok: true,
@@ -179,11 +210,6 @@ export async function runDispatch(opts: DispatchOptions): Promise<number> {
         }),
       );
     }
-  } else if (status === 'ok' && adapter === 'stdout' && opts.json === true) {
-    // Don't double-print the markdown if the user wants JSON over stdout.
-    // In that case stdout already received the markdown; emit the
-    // receipt to stderr for tooling.
-    process.stderr.write(`${JSON.stringify(result)}\n`);
   }
 
   const { getLogger } = await import('../output/logger.js');
