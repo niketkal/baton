@@ -1,5 +1,14 @@
 # @batonai/render
 
+## 1.0.7
+
+### Patch Changes
+
+- - **compiler**: fast-mode `current_state` extraction now skips tool-placeholder messages (`[tool: name]`, `[tool_result] …`) when picking the most recent assistant turn. Sessions ending in a tool call (common for codex rollouts) were producing `current_state: "[tool: exec_command]"` instead of the substantive prose just above it. The filter only treats messages whose _entire_ body is a placeholder as non-prose, so inline mentions like "I ran [tool: rg]" still count.
+- Updated dependencies
+  - @batonai/llm@1.0.7
+  - @batonai/schema@1.0.7
+
 ## 1.0.6
 
 ### Patch Changes
